@@ -330,11 +330,11 @@ const UI = {
         // Theme toggle long-press handler
         let themeTogglePressTimer = null;
         let longPressTriggered = false;
+        let recentTouchToggle = false; // suppress subsequent click after touch
         
         const startLongPress = (e) => {
             const btn = e.target.closest('#themeToggle');
             if (btn) {
-                e.preventDefault(); // Prevent text selection
                 longPressTriggered = false;
                 themeTogglePressTimer = setTimeout(() => {
                     longPressTriggered = true;
@@ -348,6 +348,17 @@ const UI = {
                 clearTimeout(themeTogglePressTimer);
                 themeTogglePressTimer = null;
             }
+            // Handle short tap on touch devices
+            const btn = e.target.closest && e.target.closest('#themeToggle');
+            if (btn && !longPressTriggered && (e.type === 'touchend' || e.type === 'touchcancel')) {
+                e.preventDefault();
+                this.toggleTheme();
+                recentTouchToggle = true;
+                setTimeout(() => { recentTouchToggle = false; }, 400);
+            }
+            if (e.type !== 'mousedown') {
+                longPressTriggered = false;
+            }
         };
         
         this.app.addEventListener('mousedown', startLongPress);
@@ -360,6 +371,12 @@ const UI = {
         this.app.addEventListener('click', (e) => {
             // Header actions
             if (e.target.closest('#themeToggle')) { 
+                // If a touch just handled the toggle, ignore the synthetic click
+                if (recentTouchToggle) {
+                    recentTouchToggle = false;
+                    longPressTriggered = false;
+                    return;
+                }
                 if (!longPressTriggered) {
                     this.toggleTheme();
                 }
