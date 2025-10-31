@@ -231,39 +231,14 @@ main {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    text-shadow: 
-        0 0 8px rgba(255, 255, 255, 0.8),
-        0 0 4px rgba(255, 255, 255, 0.6),
-        0 1px 2px rgba(255, 255, 255, 0.4);
-    color: #1a1a1a;
+    color: var(--text-primary);
     font-weight: 600;
 }
 
 .folder-count {
     font-size: 14px;
-    text-shadow: 
-        0 0 6px rgba(255, 255, 255, 0.7),
-        0 0 3px rgba(255, 255, 255, 0.5),
-        0 1px 1px rgba(255, 255, 255, 0.3);
-    color: #2d2d2d;
+    color: var(--text-secondary);
     font-weight: 500;
-}
-
-/* Dark mode text shadows for folder cards */
-body.dark-theme .folder-card h3 {
-    text-shadow: 
-        0 0 8px rgba(0, 0, 0, 0.9),
-        0 0 4px rgba(0, 0, 0, 0.7),
-        0 1px 2px rgba(0, 0, 0, 0.5);
-    color: #f8f9fa;
-}
-
-body.dark-theme .folder-count {
-    text-shadow: 
-        0 0 6px rgba(0, 0, 0, 0.8),
-        0 0 3px rgba(0, 0, 0, 0.6),
-        0 1px 1px rgba(0, 0, 0, 0.4);
-    color: #e0e0e0;
 }
 
 .folder-delete {
@@ -830,12 +805,18 @@ body.dark-theme .folder-count {
     border-radius: 8px;
     overflow: hidden;
     margin-bottom: 8px;
+    pointer-events: none;
+}
+
+.palette-preview > div {
+    pointer-events: none;
 }
 
 .palette-name {
     font-size: 13px;
     font-weight: 600;
     color: var(--text-primary);
+    pointer-events: none;
 }
 
 .color-picker {

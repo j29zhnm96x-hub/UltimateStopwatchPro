@@ -4,8 +4,10 @@ const AppState = {
     currentFolder: null,
     currentResult: null,
     theme: localStorage.getItem('as_theme') || 'dark',
-    themePalette: localStorage.getItem('as_themePalette') || 'default',
-    customColors: JSON.parse(localStorage.getItem('as_customColors') || 'null'),
+    themePalette_dark: localStorage.getItem('as_themePalette_dark') || 'default',
+    themePalette_light: localStorage.getItem('as_themePalette_light') || 'light_default',
+    customColors_dark: JSON.parse(localStorage.getItem('as_customColors_dark') || 'null'),
+    customColors_light: JSON.parse(localStorage.getItem('as_customColors_light') || 'null'),
     currency: localStorage.getItem('as_currency') || '€',
     units: localStorage.getItem('as_units') || 'metric',
     preselectedFolder: null,
@@ -272,10 +274,14 @@ const UI = {
             document.body.classList.remove('dark-theme');
         }
         
+        // Get the palette for current theme mode
+        const currentCustomColors = AppState.theme === 'dark' ? AppState.customColors_dark : AppState.customColors_light;
+        const currentPalette = AppState.theme === 'dark' ? AppState.themePalette_dark : AppState.themePalette_light;
+        
         // Apply saved custom palette or preset palette
-        if (AppState.customColors) {
-            this.applyThemePalette(AppState.customColors, true);
-        } else if (AppState.themePalette) {
+        if (currentCustomColors) {
+            this.applyThemePalette(currentCustomColors, true);
+        } else if (currentPalette) {
             // Load and apply the saved palette (including default palettes)
             const palettes = {
                 dark: [
@@ -292,7 +298,7 @@ const UI = {
                 ]
             };
             const allPalettes = [...palettes.dark, ...palettes.light];
-            const palette = allPalettes.find(p => p.id === AppState.themePalette);
+            const palette = allPalettes.find(p => p.id === currentPalette);
             if (palette) {
                 this.applyThemePalette(palette.colors);
             } else {
@@ -308,13 +314,6 @@ const UI = {
     toggleTheme() {
         AppState.theme = AppState.theme === 'light' ? 'dark' : 'light';
         localStorage.setItem('as_theme', AppState.theme);
-        
-        // Reset to default palette when switching modes (unless using custom)
-        if (!AppState.customColors) {
-            AppState.themePalette = AppState.theme === 'dark' ? 'default' : 'light_default';
-            localStorage.setItem('as_themePalette', AppState.themePalette);
-        }
-        
         this.applyTheme();
     },
 
@@ -1237,13 +1236,15 @@ const UI = {
 
         const currentMode = AppState.theme;
         const relevantPalettes = palettes[currentMode];
+        const currentPalette = currentMode === 'dark' ? AppState.themePalette_dark : AppState.themePalette_light;
+        const currentCustomColors = currentMode === 'dark' ? AppState.customColors_dark : AppState.customColors_light;
 
         const modal = this.createModal('Theme Customization', `
             <div class="form-group">
                 <label class="form-label">Preset Palettes (${currentMode === 'dark' ? 'Dark' : 'Light'} Mode)</label>
                 <div class="theme-palette-grid">
                     ${relevantPalettes.map(p => `
-                        <button type="button" class="palette-card ${AppState.themePalette === p.id ? 'active' : ''}" data-palette="${p.id}">
+                        <button type="button" class="palette-card ${currentPalette === p.id ? 'active' : ''}" data-palette="${p.id}">
                             <div class="palette-preview">
                                 <div style="background:${p.colors.primary};flex:1"></div>
                                 <div style="background:${p.colors.secondary};flex:1"></div>
@@ -1261,19 +1262,19 @@ const UI = {
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
                     <div>
                         <label style="font-size:12px;color:var(--text-secondary);display:block;margin-bottom:4px;">Background</label>
-                        <input type="color" class="color-picker" id="customPrimary" value="${AppState.customColors?.primary || palettes[currentMode][0].colors.primary}">
+                        <input type="color" class="color-picker" id="customPrimary" value="${currentCustomColors?.primary || palettes[currentMode][0].colors.primary}">
                     </div>
                     <div>
                         <label style="font-size:12px;color:var(--text-secondary);display:block;margin-bottom:4px;">Accent</label>
-                        <input type="color" class="color-picker" id="customAccent" value="${AppState.customColors?.accent || palettes[currentMode][0].colors.accent}">
+                        <input type="color" class="color-picker" id="customAccent" value="${currentCustomColors?.accent || palettes[currentMode][0].colors.accent}">
                     </div>
                     <div>
                         <label style="font-size:12px;color:var(--text-secondary);display:block;margin-bottom:4px;">Text</label>
-                        <input type="color" class="color-picker" id="customText" value="${AppState.customColors?.text || palettes[currentMode][0].colors.text}">
+                        <input type="color" class="color-picker" id="customText" value="${currentCustomColors?.text || palettes[currentMode][0].colors.text}">
                     </div>
                     <div>
                         <label style="font-size:12px;color:var(--text-secondary);display:block;margin-bottom:4px;">Border</label>
-                        <input type="color" class="color-picker" id="customBorder" value="${AppState.customColors?.border || palettes[currentMode][0].colors.border}">
+                        <input type="color" class="color-picker" id="customBorder" value="${currentCustomColors?.border || palettes[currentMode][0].colors.border}">
                     </div>
                 </div>
                 <button class="btn btn-secondary btn-block" id="applyCustomBtn" style="margin-top:12px;">Apply Custom Theme</button>
@@ -1288,16 +1289,22 @@ const UI = {
         // Palette selection
         modal.querySelectorAll('.palette-card').forEach(card => {
             card.addEventListener('click', (e) => {
-                e.preventDefault();
                 e.stopPropagation();
                 const paletteId = card.dataset.palette;
                 const palette = relevantPalettes.find(p => p.id === paletteId);
                 if (palette) {
                     this.applyThemePalette(palette.colors);
-                    AppState.themePalette = paletteId;
-                    AppState.customColors = null;
-                    localStorage.setItem('as_themePalette', paletteId);
-                    localStorage.removeItem('as_customColors');
+                    if (currentMode === 'dark') {
+                        AppState.themePalette_dark = paletteId;
+                        AppState.customColors_dark = null;
+                        localStorage.setItem('as_themePalette_dark', paletteId);
+                        localStorage.removeItem('as_customColors_dark');
+                    } else {
+                        AppState.themePalette_light = paletteId;
+                        AppState.customColors_light = null;
+                        localStorage.setItem('as_themePalette_light', paletteId);
+                        localStorage.removeItem('as_customColors_light');
+                    }
                     modal.remove();
                 }
             });
@@ -1312,24 +1319,31 @@ const UI = {
                 border: modal.querySelector('#customBorder').value
             };
             this.applyThemePalette(custom, true);
-            AppState.themePalette = 'custom';
-            AppState.customColors = custom;
-            localStorage.setItem('as_themePalette', 'custom');
-            localStorage.setItem('as_customColors', JSON.stringify(custom));
+            if (currentMode === 'dark') {
+                AppState.themePalette_dark = 'custom';
+                AppState.customColors_dark = custom;
+                localStorage.setItem('as_themePalette_dark', 'custom');
+                localStorage.setItem('as_customColors_dark', JSON.stringify(custom));
+            } else {
+                AppState.themePalette_light = 'custom';
+                AppState.customColors_light = custom;
+                localStorage.setItem('as_themePalette_light', 'custom');
+                localStorage.setItem('as_customColors_light', JSON.stringify(custom));
+            }
             modal.remove();
         });
     },
 
     applyThemePalette(colors, isCustom = false) {
-        const root = document.documentElement;
-        root.style.setProperty('--bg-primary', colors.primary);
-        root.style.setProperty('--bg-secondary', colors.secondary || this.adjustColor(colors.primary, 10));
-        root.style.setProperty('--bg-tertiary', colors.tertiary || this.adjustColor(colors.primary, 20));
-        root.style.setProperty('--text-primary', colors.text);
-        root.style.setProperty('--text-secondary', colors.textSec || this.adjustColor(colors.text, -30));
-        root.style.setProperty('--accent', colors.accent);
-        root.style.setProperty('--accent-hover', this.adjustColor(colors.accent, -10));
-        root.style.setProperty('--border', colors.border);
+        const target = document.body;
+        target.style.setProperty('--bg-primary', colors.primary);
+        target.style.setProperty('--bg-secondary', colors.secondary || this.adjustColor(colors.primary, 10));
+        target.style.setProperty('--bg-tertiary', colors.tertiary || this.adjustColor(colors.primary, 20));
+        target.style.setProperty('--text-primary', colors.text);
+        target.style.setProperty('--text-secondary', colors.textSec || this.adjustColor(colors.text, -30));
+        target.style.setProperty('--accent', colors.accent);
+        target.style.setProperty('--accent-hover', this.adjustColor(colors.accent, -10));
+        target.style.setProperty('--border', colors.border);
     },
 
     adjustColor(hex, percent) {
@@ -1342,15 +1356,15 @@ const UI = {
     },
     
     clearThemePalette() {
-        const root = document.documentElement;
-        root.style.removeProperty('--bg-primary');
-        root.style.removeProperty('--bg-secondary');
-        root.style.removeProperty('--bg-tertiary');
-        root.style.removeProperty('--text-primary');
-        root.style.removeProperty('--text-secondary');
-        root.style.removeProperty('--accent');
-        root.style.removeProperty('--accent-hover');
-        root.style.removeProperty('--border');
+        const target = document.body;
+        target.style.removeProperty('--bg-primary');
+        target.style.removeProperty('--bg-secondary');
+        target.style.removeProperty('--bg-tertiary');
+        target.style.removeProperty('--text-primary');
+        target.style.removeProperty('--text-secondary');
+        target.style.removeProperty('--accent');
+        target.style.removeProperty('--accent-hover');
+        target.style.removeProperty('--border');
     },
 
     showFolderMenu(anchorEl, folderId) {
