@@ -617,6 +617,7 @@ const UI = {
         AppState.theme = AppState.theme === 'light' ? 'dark' : 'light';
         localStorage.setItem('as_theme', AppState.theme);
         this.applyTheme();
+        this.updateThemeToggleIcon();
     },
 
     getSettingsIcon() {
@@ -626,6 +627,13 @@ const UI = {
                 <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06A2 2 0 1 1 4.21 17l.06-.06A1.65 1.65 0 0 0 4.6 15 1.65 1.65 0 0 0 3.09 14H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06A2 2 0 1 1 7.04 4.3l.06.06A1.65 1.65 0 0 0 8.92 4.6 1.65 1.65 0 0 0 10 3.09V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1.08 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06A2 2 0 1 1 21 7.04l-.06.06A1.65 1.65 0 0 0 20.4 9c.65.29 1.11.93 1.18 1.67H21a2 2 0 1 1 0 4h-.09c-.27.31-.65.27-1.51.33z"/>
             </svg>
         `;
+    },
+
+    updateThemeToggleIcon() {
+        const btn = this.app && this.app.querySelector ? this.app.querySelector('#themeToggle') : null;
+        if (btn) {
+            btn.innerHTML = this.getThemeIcon();
+        }
     },
 
     setupEventListeners() {
