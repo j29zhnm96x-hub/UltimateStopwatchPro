@@ -1,4 +1,4 @@
-// Ultimate Stopwatch - State & Data Management
+/// Ultimate Stopwatch - State & Data Management
 const AppState = {
     currentView: 'home',
     currentFolder: null,
@@ -10,12 +10,72 @@ const AppState = {
     customColors_light: JSON.parse(localStorage.getItem('as_customColors_light') || 'null'),
     currency: localStorage.getItem('as_currency') || '€',
     units: localStorage.getItem('as_units') || 'metric',
+    lang: localStorage.getItem('as_lang') || 'en',
     preselectedFolder: null,
     remeasureResultId: null,
+    continueResultId: null,
+    resultChoiceTargetId: null,
+    keepAwakeOnCharge: JSON.parse(localStorage.getItem('as_keepAwakeCharge') || 'false'),
     display: {
         timeMode: localStorage.getItem('as_timeMode') || 'hms',
         showHundredths: JSON.parse(localStorage.getItem('as_showHundredths') || 'true')
     },
+
+    // Wake Lock helpers (keep screen awake while charging)
+    async requestWakeLock() {
+        try {
+            if (!('wakeLock' in navigator)) return null;
+            this._wakeLock = await navigator.wakeLock.request('screen');
+            this._wakeLock.addEventListener('release', () => { /* released */ });
+            return this._wakeLock;
+        } catch (e) {
+            return null;
+        }
+    },
+    async releaseWakeLock() {
+        try {
+            if (this._wakeLock) {
+                await this._wakeLock.release();
+                this._wakeLock = null;
+            }
+        } catch (e) { /* ignore */ }
+    },
+    async updateKeepAwakeBinding() {
+        // Remove old listeners if any
+        if (this._battery && this._battery.removeEventListener) {
+            this._battery.removeEventListener('chargingchange', this._onChargingChange);
+        }
+        document.removeEventListener('visibilitychange', this._onVisibilityChange);
+
+        if (!AppState.keepAwakeOnCharge) {
+            await this.releaseWakeLock();
+            return;
+        }
+        if (!('getBattery' in navigator)) {
+            // No battery info; try to acquire unconditionally
+            await this.requestWakeLock();
+            return;
+        }
+        this._battery = await navigator.getBattery();
+        this._onChargingChange = async () => {
+            if (this._battery.charging) {
+                await this.requestWakeLock();
+            } else {
+                await this.releaseWakeLock();
+            }
+        };
+        this._battery.addEventListener('chargingchange', this._onChargingChange);
+        this._onVisibilityChange = async () => {
+            if (document.visibilityState === 'visible' && this._battery.charging && AppState.keepAwakeOnCharge) {
+                await this.requestWakeLock();
+            }
+        };
+        document.addEventListener('visibilitychange', this._onVisibilityChange);
+        // Initial apply
+        await this._onChargingChange();
+    },
+    
+    
     stopwatch: {
         isRunning: false,
         isPaused: false,
@@ -36,7 +96,7 @@ const DataManager = {
             localStorage.setItem('as_results', JSON.stringify(results));
             return true;
         } catch (e) {
-            alert('Saving failed: storage is full or data too large. Consider deleting older results or images.');
+            alert((Locales[AppState.lang] && Locales[AppState.lang]['error.saveFailed']) || Locales.en['error.saveFailed']);
             return false;
         }
     },
@@ -240,6 +300,223 @@ const Utils = {
     }
 };
 
+// Localization tables (core keys). Fallback: English.
+const Locales = {
+    en: {
+        'title.app': 'Ultimate Stopwatch',
+        'action.settings': 'Settings',
+        'action.close': 'Close',
+        'action.cancel': 'Cancel',
+        'action.create': 'Create',
+        'action.save': 'Save',
+        'action.update': 'Update',
+        'action.apply': 'Apply',
+        'action.proceed': 'Proceed',
+        'action.resume': 'Resume',
+        'action.pause': 'Pause',
+        'action.stop': 'Stop',
+        'action.reset': 'Reset',
+        'action.start': 'Start',
+        'action.next': 'Next',
+        'action.calculate': 'Calculate',
+        'action.chooseImage': 'Choose Image',
+        'header.stopwatch': 'Stopwatch',
+        'home.empty1': 'No projects yet.',
+        'home.empty2': 'Create one to get started!',
+        'folder.empty1': 'No results yet.',
+        'folder.empty2': 'Start timing to create one!',
+        'folder.result': 'result',
+        'folder.results': 'results',
+        'settings.language': 'Language',
+        'settings.units': 'Units',
+        'settings.metric': 'Metric (ms, s)',
+        'settings.imperial': 'Imperial',
+        'settings.currency': 'Currency',
+        'settings.power': 'Power',
+        'settings.keepAwake': 'Keep screen awake while charging',
+        'settings.timeDisplay': 'Time Display',
+        'settings.hms': 'Hours:Minutes:Seconds',
+        'settings.ms': 'Minutes:Seconds',
+        'settings.precision': 'Precision',
+        'settings.showHundredths': 'Show hundredths',
+        'settings.reOrContinue': 'Re-measure or Continue where you left off',
+        'settings.uploadChangeImage': 'Upload/Change Image',
+        'theme.title': 'Theme Customization',
+        'theme.preset': 'Preset Palettes',
+        'theme.customColors': 'Custom Colors',
+        'theme.background': 'Background',
+        'theme.accent': 'Accent',
+        'theme.text': 'Text',
+        'theme.border': 'Border',
+        'theme.applyCustom': 'Apply Custom Theme',
+        'theme.fineTune': 'Fine-tune your theme by customizing individual colors.',
+        'theme.darkMode': 'Dark Mode',
+        'theme.lightMode': 'Light Mode',
+        'color.preset': 'Preset Colors',
+        'color.custom': 'Custom Color',
+        'dialog.updateImageTitle': 'Update Image',
+        'newProject.title': 'Create New Project',
+        'newProject.name': 'Project Name',
+        'save.titleSave': 'Save Result',
+        'save.titleUpdate': 'Update Result',
+        'save.resultName': 'Result Name',
+        'save.project': 'Project',
+        'save.selectProject': 'Select project...',
+        'save.createNewProject': '+ Create New Project',
+        'save.newProjectName': 'New Project Name',
+        'save.attachImage': 'Attach Image (Optional)',
+        'menu.chooseProjectColor': 'Choose Project Color',
+        'menu.chooseProjectTextColor': 'Choose Project Text Color',
+        'menu.delete': 'Delete',
+        'resultDetail.totalTime': 'Total Time',
+        'confirm.deleteProject': 'Delete this project and all its results?',
+        'confirm.deleteResult': 'Delete this result?',
+        'confirm.stopSession': 'Stop the current session?',
+        'stopwatch.laps': 'Laps',
+        'stopwatch.avg': 'Avg',
+        'stopwatch.avgLap': 'Avg Lap',
+        'stopwatch.lap': 'Lap',
+        'stopwatch.allLaps': 'All Laps',
+        'calc.title': 'Calculate',
+        'calc.tab.quantity': 'Quantity',
+        'calc.tab.time': 'Time',
+        'calc.tab.price': 'Price',
+        'calc.numberOfItems': 'Number of Items',
+        'calc.estimatedTotalTime': 'Estimated Total Time',
+        'calc.duration': 'Duration',
+        'calc.estimatedQuantity': 'Estimated Quantity',
+        'calc.hourlyWage': 'Hourly Wage',
+        'calc.pricePerPiece': 'Price Per Piece',
+        'prompt.enterProjectName': 'Please enter a project name',
+        'choice.modalTitle': 'How would you like to proceed?',
+        'choice.continueTitle': 'Continue where you left off',
+        'choice.remeasureTitle': 'Re-measure from scratch',
+        'choice.continueDesc': 'Keeps your previous laps and adds new ones.',
+        'choice.remeasureDesc': 'Replaces the old measurements with new ones.',
+        'tooltip.newProject': 'New Project',
+        'tooltip.startStopwatch': 'Start Stopwatch',
+        'error.wakeLockUnsupported': 'Screen Wake Lock is not supported on this browser.',
+        'error.saveFailed': 'Saving failed: storage is full or data too large. Consider deleting older results or images.',
+        'error.projectNotFound': 'Project not found. It may have been deleted.',
+        'settings.projectSettings': 'Project settings for the current project.',
+        'info.wakeLockNote': 'Uses the Screen Wake Lock API when available.',
+        'label.h': 'h', 'label.m': 'm', 'label.s': 's',
+        'currency.euro': 'Euro (€)',
+        'currency.usd': 'US Dollar ($)',
+        'currency.gbp': 'Pound (£)'
+    },
+    hr: {
+        'title.app': 'Ultimate Stopwatch',
+        'action.settings': 'Postavke',
+        'action.close': 'Zatvori',
+        'action.cancel': 'Odustani',
+        'action.create': 'Stvori',
+        'action.save': 'Spremi',
+        'action.update': 'Ažuriraj',
+        'action.apply': 'Primijeni',
+        'action.proceed': 'Nastavi',
+        'action.resume': 'Nastavi',
+        'action.pause': 'Pauza',
+        'action.stop': 'Zaustavi',
+        'action.reset': 'Resetiraj',
+        'action.start': 'Pokreni',
+        'action.next': 'Sljedeće',
+        'action.calculate': 'Izračunaj',
+        'action.chooseImage': 'Odaberi sliku',
+        'header.stopwatch': 'Štoperica',
+        'home.empty1': 'Još nema projekata.',
+        'home.empty2': 'Kreiraj jedan za početak!',
+        'folder.empty1': 'Još nema rezultata.',
+        'folder.empty2': 'Pokreni mjerenje da ga kreiraš!',
+        'folder.result': 'rezultat',
+        'folder.results': 'rezultata',
+        'settings.language': 'Jezik',
+        'settings.units': 'Jedinice',
+        'settings.metric': 'Metrički (ms, s)',
+        'settings.imperial': 'Imperijalne',
+        'settings.currency': 'Valuta',
+        'settings.power': 'Napajanje',
+        'settings.keepAwake': 'Drži zaslon budnim tijekom punjenja',
+        'settings.timeDisplay': 'Prikaz vremena',
+        'settings.hms': 'Sati:Minute:Sekunde',
+        'settings.ms': 'Minute:Sekunde',
+        'settings.precision': 'Preciznost',
+        'settings.showHundredths': 'Prikaži stotinke',
+        'settings.reOrContinue': 'Ponovno izmjeri ili nastavi gdje si stao',
+        'settings.uploadChangeImage': 'Učitaj/Promijeni sliku',
+        'theme.title': 'Prilagodba teme',
+        'theme.preset': 'Unaprijed zadane palete',
+        'theme.customColors': 'Prilagođene boje',
+        'theme.background': 'Pozadina',
+        'theme.accent': 'Istaknuta',
+        'theme.text': 'Tekst',
+        'theme.border': 'Rub',
+        'theme.applyCustom': 'Primijeni prilagođenu temu',
+        'theme.fineTune': 'Prilagodite temu fino podešavanjem pojedinačnih boja.',
+        'theme.darkMode': 'Tamni način',
+        'theme.lightMode': 'Svijetli način',
+        'color.preset': 'Unaprijed zadane boje',
+        'color.custom': 'Prilagođena boja',
+        'dialog.updateImageTitle': 'Ažuriraj sliku',
+        'newProject.title': 'Stvori novi projekt',
+        'newProject.name': 'Naziv projekta',
+        'save.titleSave': 'Spremi rezultat',
+        'save.titleUpdate': 'Ažuriraj rezultat',
+        'save.resultName': 'Naziv rezultata',
+        'save.project': 'Projekt',
+        'save.selectProject': 'Odaberi projekt...',
+        'save.createNewProject': '+ Kreiraj novi projekt',
+        'save.newProjectName': 'Naziv novog projekta',
+        'save.attachImage': 'Priloži sliku (neobavezno)',
+        'menu.chooseProjectColor': 'Odaberi boju projekta',
+        'menu.chooseProjectTextColor': 'Odaberi boju teksta projekta',
+        'menu.delete': 'Izbriši',
+        'resultDetail.totalTime': 'Ukupno vrijeme',
+        'confirm.deleteProject': 'Obrisati ovaj projekt i sve njegove rezultate?',
+        'confirm.deleteResult': 'Obrisati ovaj rezultat?',
+        'confirm.stopSession': 'Zaustaviti trenutno mjerenje?',
+        'stopwatch.laps': 'Krugovi',
+        'stopwatch.avg': 'Prosjek',
+        'stopwatch.avgLap': 'Prosječan krug',
+        'stopwatch.lap': 'Krug',
+        'stopwatch.allLaps': 'Svi krugovi',
+        'calc.title': 'Izračun',
+        'calc.tab.quantity': 'Količina',
+        'calc.tab.time': 'Vrijeme',
+        'calc.tab.price': 'Cijena',
+        'calc.numberOfItems': 'Broj stavki',
+        'calc.estimatedTotalTime': 'Procijenjeno ukupno vrijeme',
+        'calc.duration': 'Trajanje',
+        'calc.estimatedQuantity': 'Procijenjena količina',
+        'calc.hourlyWage': 'Satnica',
+        'calc.pricePerPiece': 'Cijena po komadu',
+        'choice.modalTitle': 'Kako želite nastaviti?',
+        'choice.continueTitle': 'Nastavi gdje si stao',
+        'choice.remeasureTitle': 'Ponovno izmjeri od početka',
+        'choice.continueDesc': 'Zadržava prethodne krugove i dodaje nove.',
+        'choice.remeasureDesc': 'Zamjenjuje stare izmjere novima.',
+        'tooltip.newProject': 'Novi projekt',
+        'tooltip.startStopwatch': 'Pokreni štopericu',
+        'error.wakeLockUnsupported': 'Zadržavanje zaslona nije podržano u ovom pregledniku.',
+        'error.saveFailed': 'Spremanje nije uspjelo: pohrana je puna ili su podaci preveliki. Obrišite starije rezultate ili slike.',
+        'error.projectNotFound': 'Projekt nije pronađen. Možda je obrisan.',
+        'settings.projectSettings': 'Postavke projekta za trenutni projekt.',
+        'info.wakeLockNote': 'Koristi Screen Wake Lock API kada je dostupan.',
+        'label.h': 'h', 'label.m': 'm', 'label.s': 's',
+        'currency.euro': 'Euro (€)',
+        'currency.usd': 'Američki dolar ($)',
+        'currency.gbp': 'Funta (£)'
+    }
+    // NOTE: Additional languages will fall back to English if a key is missing.
+};
+
+// Extend locales with additional language packs if provided (locales.js)
+if (typeof window !== 'undefined' && window.LocalesExtra) {
+    for (const [code, table] of Object.entries(window.LocalesExtra)) {
+        Locales[code] = { ...(Locales[code] || {}), ...table };
+    }
+}
+
 const UI = {
     init() {
         this.app = document.getElementById('app');
@@ -247,7 +524,32 @@ const UI = {
         this.setupEventListeners();
         this.setupGlobalInputHandlers();
         this.setupKeyboardShortcuts();
+        AppState.updateKeepAwakeBinding && AppState.updateKeepAwakeBinding();
+        this.applyLanguage();
         this.renderHome();
+    },
+    
+    // i18n helpers
+    t(key) {
+        const lang = AppState.lang || 'en';
+        return (Locales[lang] && Locales[lang][key]) || (Locales.en && Locales.en[key]) || key;
+    },
+    applyLanguage() {
+        document.documentElement.lang = AppState.lang || 'en';
+        document.title = this.t('title.app');
+        document.documentElement.dir = (AppState.lang === 'ar') ? 'rtl' : 'ltr';
+    },
+    p(singularKey, pluralKey, count) {
+        return count === 1 ? this.t(singularKey) : this.t(pluralKey);
+    },
+    rerenderCurrentView() {
+        switch (AppState.currentView) {
+            case 'home': this.renderHome(); break;
+            case 'folder': this.renderFolderView(AppState.currentFolder); break;
+            case 'result': this.renderResultDetail(AppState.currentResult); break;
+            case 'stopwatch': this.renderStopwatch(); break;
+            default: this.renderHome();
+        }
     },
     
     setupGlobalInputHandlers() {
@@ -409,7 +711,7 @@ const UI = {
             const resultDeleteBtn = e.target.closest('.result-delete');
             if (resultDeleteBtn) {
                 e.stopPropagation();
-                if (confirm('Delete this result?')) {
+                if (confirm(this.t('confirm.deleteResult'))) {
                     DataManager.deleteResult(resultDeleteBtn.dataset.resultId);
                     this.renderFolderView(AppState.currentFolder);
                 }
@@ -430,7 +732,7 @@ const UI = {
                 const action = menuAction.dataset.action;
                 const rid = menuAction.dataset.resultId;
                 if (action === 'delete' && rid) {
-                    if (confirm('Delete this result?')) {
+                    if (confirm(this.t('confirm.deleteResult'))) {
                         DataManager.deleteResult(rid);
                         this.closeResultMenu();
                         this.renderFolderView(AppState.currentFolder);
@@ -454,7 +756,12 @@ const UI = {
             }
 
             // Stopwatch controls
-            if (e.target.closest('#startBtn')) { StopwatchManager.start(); this.renderStopwatch(); return; }
+            if (e.target.closest('#startBtn')) {
+                if (AppState.resultChoiceTargetId && !AppState.remeasureResultId && !AppState.continueResultId) {
+                    this.showReOrContinuePrompt();
+                    return;
+                }
+                StopwatchManager.start(); this.renderStopwatch(); return; }
             if (e.target.closest('#pauseBtn')) { StopwatchManager.pause(); this.renderStopwatch(); return; }
             if (e.target.closest('#resumeBtn')) { StopwatchManager.resume(); this.renderStopwatch(); return; }
             if (e.target.closest('#stopBtn')) { StopwatchManager.stop(); return; }
@@ -536,7 +843,7 @@ const UI = {
     handleBackClick() {
         switch (AppState.currentView) {
             case 'stopwatch':
-                if (AppState.stopwatch.isRunning && !confirm('Stop the current session?')) return;
+                if (AppState.stopwatch.isRunning && !confirm(this.t('confirm.stopSession'))) return;
                 StopwatchManager.reset();
                 this.renderHome();
                 break;
@@ -554,6 +861,10 @@ const UI = {
             if (AppState.currentView === 'stopwatch') {
                 if (e.key === 'Enter') {
                     e.preventDefault();
+                    if (AppState.resultChoiceTargetId && !AppState.remeasureResultId && !AppState.continueResultId) {
+                        this.showReOrContinuePrompt();
+                        return;
+                    }
                     if (!AppState.stopwatch.isRunning) {
                         StopwatchManager.start();
                     } else if (!AppState.stopwatch.isPaused) {
@@ -592,10 +903,17 @@ const UI = {
         
         this.app.innerHTML = `
             <header id="header">
-                <div style="width: 40px;"></div>
-                <h1>Ultimate Stopwatch</h1>
                 <div style="display:flex;gap:8px;align-items:center;">
-                    <button id="settingsBtn" class="icon-btn" title="Settings">${this.getSettingsIcon()}</button>
+                    <button id="newFolderBtn" class="icon-btn" title="${this.t('tooltip.newProject')}">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/>
+                            <line x1="12" y1="11" x2="12" y2="17"/><line x1="9" y1="14" x2="15" y2="14"/>
+                        </svg>
+                    </button>
+                </div>
+                <h1>${this.t('title.app')}</h1>
+                <div style="display:flex;gap:8px;align-items:center;">
+                    <button id="settingsBtn" class="icon-btn" title="${this.t('action.settings')}">${this.getSettingsIcon()}</button>
                     <button id="themeToggle" class="icon-btn">${this.getThemeIcon()}</button>
                 </div>
             </header>
@@ -605,15 +923,16 @@ const UI = {
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/>
                         </svg>
-                        <p>No projects yet.<br>Create one to get started!</p>
+                        <p>${this.t('home.empty1')}<br>${this.t('home.empty2')}</p>
                     </div>
                 ` : `
                     <div class="folders-grid">
                         ${folders.map(folder => {
                             const results = DataManager.getFolderResults(folder.id);
                             const folderColor = folder.color || 'var(--bg-secondary)';
+                            const textVars = folder.textColor ? `; --folder-text: ${folder.textColor}; --folder-text-secondary: ${this.adjustColor(folder.textColor, -20)}` : '';
                             return `
-                                <div class="folder-card" data-folder-id="${folder.id}" draggable="true" style="background: ${folderColor};">
+                                <div class="folder-card" data-folder-id="${folder.id}" draggable="true" style="background: ${folderColor}${textVars};">
                                     <button class="folder-menu" data-folder-id="${folder.id}">
                                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                             <circle cx="12" cy="5" r="1.5"/>
@@ -622,26 +941,22 @@ const UI = {
                                         </svg>
                                     </button>
                                     <h3>${folder.name}</h3>
-                                    <div class="folder-count">${results.length} result${results.length !== 1 ? 's' : ''}</div>
+                                    <div class="folder-count">${results.length} ${this.p('folder.result','folder.results', results.length)}</div>
                                 </div>
                             `;
                         }).join('')}
                     </div>
                 `}
             </main>
-            <div class="fab-container">
-                <button class="fab" id="newFolderBtn" title="New Project">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/>
-                        <line x1="12" y1="11" x2="12" y2="17"/><line x1="9" y1="14" x2="15" y2="14"/>
-                    </svg>
-                </button>
-                <button class="fab large" id="startStopwatchBtn" title="Start Stopwatch">
-                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
-                    </svg>
-                </button>
-            </div>
+            ${!AppState.stopwatch.isRunning ? `
+                <div class="fab-container">
+                    <button class="fab large pulse" id="startStopwatchBtn" title="${this.t('tooltip.startStopwatch')}">
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+                        </svg>
+                    </button>
+                </div>
+            ` : ''}
         `;
     },
     
@@ -661,9 +976,9 @@ const UI = {
                         <path d="M19 12H5M12 19l-7-7 7-7"/>
                     </svg>
                 </button>
-                <h1>Stopwatch</h1>
+                <h1>${this.t('header.stopwatch')}</h1>
                 <div style="display:flex;gap:8px;align-items:center;">
-                    <button id="settingsBtn" class="icon-btn" title="Settings">${this.getSettingsIcon()}</button>
+                    <button id="settingsBtn" class="icon-btn" title="${this.t('action.settings')}">${this.getSettingsIcon()}</button>
                 </div>
             </header>
             <main>
@@ -671,35 +986,35 @@ const UI = {
                     <div class="time-display" id="timeDisplay">${Utils.formatTime(AppState.stopwatch.elapsedTime)}</div>
                     <div class="controls">
                         ${!isRunning ? `
-                            <button class="btn btn-primary control-btn" id="startBtn">Start</button>
+                            <button class="btn btn-primary control-btn" id="startBtn">${this.t('action.start')}</button>
                         ` : isPaused ? `
                             <div class="controls-stack">
-                                <button class="btn btn-success control-btn btn-next-big" id="resumeBtn">Resume</button>
+                                <button class="btn btn-success control-btn btn-next-big" id="resumeBtn">${this.t('action.resume')}</button>
                                 <div class="controls-row">
-                                    <button class="btn btn-secondary control-btn" id="resetBtn">Reset</button>
+                                    <button class="btn btn-secondary control-btn" id="resetBtn">${this.t('action.reset')}</button>
                                 </div>
                             </div>
                         ` : `
                             <div class="controls-stack">
-                                <button class="btn btn-primary control-btn btn-next-big" id="lapBtn">Next</button>
+                                <button class="btn btn-primary control-btn btn-next-big" id="lapBtn">${this.t('action.next')}</button>
                                 <div class="controls-row">
-                                    <button class="btn control-btn" id="pauseBtn" style="background: var(--warning); color: white;">Pause</button>
-                                    <button class="btn btn-danger control-btn" id="stopBtn">Stop</button>
+                                    <button class="btn control-btn" id="pauseBtn" style="background: var(--warning); color: white;">${this.t('action.pause')}</button>
+                                    <button class="btn btn-danger control-btn" id="stopBtn">${this.t('action.stop')}</button>
                                 </div>
                             </div>
                         `}
-                        ${(!isRunning && laps.length > 0) ? `<button class="btn btn-danger control-btn" id="resetBtn">Reset</button>` : ''}
+                        ${(!isRunning && laps.length > 0) ? `<button class="btn btn-danger control-btn" id="resetBtn">${this.t('action.reset')}</button>` : ''}
                     </div>
                     ${laps.length > 0 ? `
                         <div class="laps-container">
                             <div class="laps-header">
-                                <span>Laps (${laps.length})</span>
-                                <span>Avg: ${Utils.formatTime(Utils.calculateAverage(laps))}</span>
+                                <span>${this.t('stopwatch.laps')} (${laps.length})</span>
+                                <span>${this.t('stopwatch.avg')}: ${Utils.formatTime(Utils.calculateAverage(laps))}</span>
                             </div>
                             <div class="laps-list">
                                 ${laps.slice().reverse().map(lap => `
                                     <div class="lap-item">
-                                        <div class="lap-number">Lap ${lap.number}</div>
+                                        <div class="lap-number">${this.t('stopwatch.lap')} ${lap.number}</div>
                                         <div class="lap-times">
                                             <div class="lap-time">${Utils.formatTime(lap.time)}</div>
                                             <div class="lap-cumulative">${Utils.formatTime(lap.cumulative)}</div>
@@ -719,7 +1034,7 @@ const UI = {
         AppState.currentFolder = folderId;
         const folder = DataManager.getFolders().find(f => f.id === folderId);
         if (!folder) {
-            alert('Project not found. It may have been deleted.');
+            alert(this.t('error.projectNotFound'));
             this.renderHome();
             return;
         }
@@ -734,7 +1049,7 @@ const UI = {
                 </button>
                 <h1>${folder.name}</h1>
                 <div style="display:flex;gap:8px;align-items:center;">
-                    <button id="settingsBtn" class="icon-btn" title="Settings">${this.getSettingsIcon()}</button>
+                    <button id="settingsBtn" class="icon-btn" title="${this.t('action.settings')}">${this.getSettingsIcon()}</button>
                 </div>
             </header>
             <main>
@@ -743,7 +1058,7 @@ const UI = {
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
                         </svg>
-                        <p>No results yet.<br>Start timing to create one!</p>
+                        <p>${this.t('folder.empty1')}<br>${this.t('folder.empty2')}</p>
                     </div>
                 ` : `
                     <div class="results-list">
@@ -770,7 +1085,7 @@ const UI = {
             </main>
             ${!AppState.stopwatch.isRunning ? `
                 <div class="fab-container">
-                    <button class="fab large" id="startStopwatchBtn" title="Start Stopwatch">
+                    <button class="fab large pulse" id="startStopwatchBtn" title="Start Stopwatch">
                         <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
                         </svg>
@@ -804,7 +1119,7 @@ const UI = {
                 </button>
                 <h1>${result.name}</h1>
                 <div style="display:flex;gap:8px;align-items:center;">
-                    <button id="settingsBtn" class="icon-btn" title="Settings">${this.getSettingsIcon()}</button>
+                    <button id="settingsBtn" class="icon-btn" title="${this.t('action.settings')}">${this.getSettingsIcon()}</button>
                 </div>
             </header>
             <main>
@@ -812,25 +1127,25 @@ const UI = {
                     ${result.image ? `<img src="${result.image}" alt="Result image" class="result-image">` : ''}
                     <div class="stats-grid">
                         <div class="stat-card">
-                            <div class="stat-label">Total Time</div>
+                            <div class="stat-label">${this.t('resultDetail.totalTime')}</div>
                             <div class="stat-value">${Utils.formatTimeCustom(result.totalTime, AppState.display.timeMode, AppState.display.showHundredths)}</div>
                         </div>
-                        <div class="stat-card stat-laps">
-                            <div class="stat-label">Laps</div>
+                        <div class="stat-card">
+                            <div class="stat-label">${this.t('stopwatch.laps')}</div>
                             <div class="stat-value">${result.laps.length}</div>
                         </div>
                         <div class="stat-card">
-                            <div class="stat-label">Avg Lap</div>
+                            <div class="stat-label">${this.t('stopwatch.avgLap')}</div>
                             <div class="stat-value">${Utils.formatTimeCustom(avgLapTime, AppState.display.timeMode, AppState.display.showHundredths)}</div>
                         </div>
                     </div>
-                    <button class="btn btn-primary btn-block" id="calculateBtn">Calculate</button>
+                    <button class="btn btn-primary btn-block" id="calculateBtn">${this.t('action.calculate')}</button>
                     <div class="laps-container">
-                        <div class="laps-header">All Laps</div>
+                        <div class="laps-header">${this.t('stopwatch.allLaps')}</div>
                         <div class="laps-list">
                             ${result.laps.map(lap => `
                                 <div class="lap-item">
-                                    <div class="lap-number">Lap ${lap.number}</div>
+                                    <div class="lap-number">${this.t('stopwatch.lap')} ${lap.number}</div>
                                     <div class="lap-times">
                                         <div class="lap-time">${Utils.formatTime(lap.time)}</div>
                                         <div class="lap-cumulative">${Utils.formatTime(lap.cumulative)}</div>
@@ -846,15 +1161,15 @@ const UI = {
             },
     
     showNewFolderDialog(parentId = null) {
-        const modal = this.createModal('Create New Project', `
+        const modal = this.createModal(this.t('newProject.title'), `
             <form id="newFolderForm">
                 <div class="form-group">
-                    <label class="form-label">Project Name</label>
+                    <label class="form-label">${this.t('newProject.name')}</label>
                     <input type="text" class="form-input" id="folderNameInput" required autofocus>
                 </div>
                 <div class="modal-actions">
-                    <button type="button" class="btn btn-secondary" id="cancelBtn">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Create</button>
+                    <button type="button" class="btn btn-secondary" id="cancelBtn">${this.t('action.cancel')}</button>
+                    <button type="submit" class="btn btn-primary">${this.t('action.create')}</button>
                 </div>
             </form>
         `);
@@ -887,31 +1202,95 @@ const UI = {
         return modal;
     },
     
+    showReOrContinuePrompt() {
+        const targetId = AppState.resultChoiceTargetId;
+        if (!targetId) return;
+        const result = DataManager.getResults().find(r => r.id === targetId);
+        if (!result) { AppState.resultChoiceTargetId = null; return; }
+        const total = Utils.formatTime(result.totalTime);
+        const modal = this.createModal(this.t('choice.modalTitle'), `
+            <div class="form-group">
+                <div class="choice-grid">
+                    <button type="button" class="choice-card active" data-choice="continue">
+                        <div class="choice-title">${this.t('choice.continueTitle')}</div>
+                        <div class="choice-sub">${result.laps.length} ${this.t('stopwatch.laps')} • ${total}</div>
+                        <div class="choice-desc">${this.t('choice.continueDesc')}</div>
+                    </button>
+                    <button type="button" class="choice-card" data-choice="remeasure">
+                        <div class="choice-title">${this.t('choice.remeasureTitle')}</div>
+                        <div class="choice-sub">0 ${this.t('stopwatch.laps')}</div>
+                        <div class="choice-desc">${this.t('choice.remeasureDesc')}</div>
+                    </button>
+                </div>
+            </div>
+            <div class="modal-actions mt-3">
+                <button class="btn btn-secondary" id="cancelChoiceBtn">${this.t('action.cancel')}</button>
+                <button class="btn btn-primary" id="applyChoiceBtn">${this.t('action.proceed')}</button>
+            </div>
+        `);
+        let selected = 'continue';
+        modal.querySelectorAll('.choice-card').forEach(card => {
+            card.addEventListener('click', () => {
+                modal.querySelectorAll('.choice-card').forEach(c => c.classList.remove('active'));
+                card.classList.add('active');
+                selected = card.dataset.choice;
+            });
+        });
+        modal.querySelector('#cancelChoiceBtn').addEventListener('click', () => { modal.remove(); });
+        modal.querySelector('#applyChoiceBtn').addEventListener('click', () => {
+            if (selected === 'continue') {
+                AppState.continueResultId = result.id;
+                AppState.remeasureResultId = null;
+                // Load into stopwatch
+                AppState.stopwatch.laps = Array.isArray(result.laps) ? [...result.laps] : [];
+                AppState.stopwatch.elapsedTime = result.totalTime || 0;
+                AppState.stopwatch.startTime = null;
+                AppState.stopwatch.isRunning = false;
+                AppState.stopwatch.isPaused = false;
+                this.renderStopwatch();
+            } else {
+                AppState.remeasureResultId = result.id;
+                AppState.continueResultId = null;
+                // Reset stopwatch to zero state (no save)
+                AppState.stopwatch.startTime = null;
+                AppState.stopwatch.pausedTime = 0;
+                AppState.stopwatch.elapsedTime = 0;
+                AppState.stopwatch.laps = [];
+                AppState.stopwatch.isRunning = false;
+                AppState.stopwatch.isPaused = false;
+                this.renderStopwatch();
+            }
+            AppState.resultChoiceTargetId = null;
+            modal.remove();
+        });
+    },
+    
     showSaveDialog() {
         const folders = DataManager.getFolders();
-        const isRemeasure = !!AppState.remeasureResultId;
-        const existingResult = isRemeasure ? DataManager.getResults().find(r => r.id === AppState.remeasureResultId) : null;
+        const existingId = AppState.remeasureResultId || AppState.continueResultId;
+        const isUpdate = !!existingId;
+        const existingResult = isUpdate ? DataManager.getResults().find(r => r.id === existingId) : null;
         
-        const modal = this.createModal(isRemeasure ? 'Update Result' : 'Save Result', `
+        const modal = this.createModal(isUpdate ? this.t('save.titleUpdate') : this.t('save.titleSave'), `
             <form id="saveResultForm">
                 <div class="form-group">
-                    <label class="form-label">Result Name</label>
+                    <label class="form-label">${this.t('save.resultName')}</label>
                     <input type="text" class="form-input" id="resultNameInput" required autofocus value="${existingResult ? existingResult.name : ''}">
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Project</label>
+                    <label class="form-label">${this.t('save.project')}</label>
                     <select class="form-select" id="folderSelect" required>
-                        <option value="">Select project...</option>
+                        <option value="">${this.t('save.selectProject')}</option>
                         ${folders.map(f => `<option value="${f.id}">${f.name}</option>`).join('')}
-                        <option value="__new__">+ Create New Project</option>
+                        <option value="__new__">${this.t('save.createNewProject')}</option>
                     </select>
                 </div>
                 <div class="form-group hidden" id="newFolderGroup">
-                    <label class="form-label">New Project Name</label>
+                    <label class="form-label">${this.t('save.newProjectName')}</label>
                     <input type="text" class="form-input" id="newFolderInput">
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Attach Image (Optional)</label>
+                    <label class="form-label">${this.t('save.attachImage')}</label>
                     <div class="file-input-wrapper">
                         <label class="file-input-label">
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -919,15 +1298,15 @@ const UI = {
                                 <circle cx="8.5" cy="8.5" r="1.5"/>
                                 <polyline points="21 15 16 10 5 21"/>
                             </svg>
-                            <span>Choose Image</span>
+                            <span>${this.t('action.chooseImage')}</span>
                             <input type="file" class="file-input" id="imageInput" accept="image/*">
                         </label>
                     </div>
                     <img id="imagePreview" class="image-preview hidden" alt="Preview">
                 </div>
                 <div class="modal-actions">
-                    <button type="button" class="btn btn-secondary" id="cancelSaveBtn">Cancel</button>
-                    <button type="submit" class="btn btn-success">Save</button>
+                    <button type="button" class="btn btn-secondary" id="cancelSaveBtn">${this.t('action.cancel')}</button>
+                    <button type="submit" class="btn btn-success">${isUpdate ? this.t('action.update') : this.t('action.save')}</button>
                 </div>
             </form>
         `);
@@ -938,7 +1317,7 @@ const UI = {
         const imagePreview = modal.querySelector('#imagePreview');
 
         // Preselect folder (either from remeasure or from preselectedFolder)
-        const targetFolder = isRemeasure && existingResult ? existingResult.folderId : AppState.preselectedFolder;
+        const targetFolder = isUpdate && existingResult ? existingResult.folderId : AppState.preselectedFolder;
         if (targetFolder) {
             const exists = Array.from(folderSelect.options).some(o => o.value === targetFolder);
             if (exists) {
@@ -975,14 +1354,14 @@ const UI = {
             if (folderId === '__new__') {
                 const newFolderName = modal.querySelector('#newFolderInput').value.trim();
                 if (!newFolderName) {
-                    alert('Please enter a project name');
+                    alert(this.t('prompt.enterProjectName'));
                     return;
                 }
                 const parentId = AppState.currentView === 'folder' ? AppState.currentFolder : null;
                 folderId = DataManager.createFolder(newFolderName, parentId).id;
             }
             
-            if (isRemeasure && existingResult) {
+            if (isUpdate && existingResult) {
                 // Update existing result
                 DataManager.updateResult(existingResult.id, {
                     name: modal.querySelector('#resultNameInput').value.trim(),
@@ -992,6 +1371,7 @@ const UI = {
                     image: imagePreview.src && !imagePreview.classList.contains('hidden') ? imagePreview.src : existingResult.image
                 });
                 AppState.remeasureResultId = null;
+                AppState.continueResultId = null;
                 modal.remove();
                 StopwatchManager.reset(true);
                 this.renderResultDetail(existingResult.id);
@@ -1015,61 +1395,58 @@ const UI = {
             }
         });
     },
-    
     showCalculateModal(result) {
         const avgLapTime = Utils.calculateAverage(result.laps);
         const avgSeconds = avgLapTime / 1000;
         
-        const modal = this.createModal('Calculate', `
+        const modal = this.createModal(this.t('calc.title'), `
             <div class="calc-tabs">
-                <button class="calc-tab active" data-tab="quantity">Quantity</button>
-                <button class="calc-tab" data-tab="time">Time</button>
-                <button class="calc-tab" data-tab="price">Price</button>
+                <button class="calc-tab active" data-tab="quantity">${this.t('calc.tab.quantity')}</button>
+                <button class="calc-tab" data-tab="time">${this.t('calc.tab.time')}</button>
+                <button class="calc-tab" data-tab="price">${this.t('calc.tab.price')}</button>
             </div>
             <div id="quantityPanel">
                 <div class="form-group">
-                    <label class="form-label">Number of Items</label>
+                    <label class="form-label">${this.t('calc.numberOfItems')}</label>
                     <input type="number" inputmode="numeric" class="form-input" id="quantityInput" min="1" value="100">
                 </div>
-                <button class="btn btn-primary btn-block" id="calcQuantityBtn">Calculate</button>
+                <button class="btn btn-primary btn-block" id="calcQuantityBtn">${this.t('action.calculate')}</button>
                 <div class="calc-result hidden" id="quantityResult">
-                    <div class="calc-result-label">Estimated Total Time</div>
+                    <div class="calc-result-label">${this.t('calc.estimatedTotalTime')}</div>
                     <div class="calc-result-value" id="quantityValue"></div>
                 </div>
             </div>
             <div id="timePanel" class="hidden">
                 <div class="form-group">
-                    <label class="form-label">Duration</label>
+                    <label class="form-label">${this.t('calc.duration')}</label>
                     <div style="display:flex;gap:8px;align-items:center;">
                         <input type="number" inputmode="numeric" class="form-input" id="hoursInput" min="0" max="23" placeholder="0" value="1" style="width:80px;" />
-                        <span>h</span>
+                        <span>${this.t('label.h')}</span>
                         <input type="number" inputmode="numeric" class="form-input" id="minutesInput" min="0" max="59" placeholder="0" value="30" style="width:80px;" />
-                        <span>m</span>
+                        <span>${this.t('label.m')}</span>
                         <input type="number" inputmode="numeric" class="form-input" id="secondsInput" min="0" max="59" placeholder="0" value="0" style="width:80px;" />
-                        <span>s</span>
+                        <span>${this.t('label.s')}</span>
                         <div id="durationPreview" style="margin-left:auto;font-weight:600;"></div>
                     </div>
                 </div>
-                <button class="btn btn-primary btn-block" id="calcTimeBtn">Calculate</button>
+                <button class="btn btn-primary btn-block" id="calcTimeBtn">${this.t('action.calculate')}</button>
                 <div class="calc-result hidden" id="timeResult">
-                    <div class="calc-result-label">Estimated Quantity</div>
+                    <div class="calc-result-label">${this.t('calc.estimatedQuantity')}</div>
                     <div class="calc-result-value" id="timeValue"></div>
                 </div>
             </div>
             <div id="pricePanel" class="hidden">
                 <div class="form-group">
-                    <label class="form-label">Hourly Wage (${AppState.currency})</label>
+                    <label class="form-label">${this.t('calc.hourlyWage')} (${AppState.currency})</label>
                     <input type="number" inputmode="decimal" class="form-input" id="wageInput" min="0" step="0.01" value="${result.hourlyWage || ''}">
                 </div>
-                <button class="btn btn-primary btn-block" id="calcPriceBtn">Calculate</button>
+                <button class="btn btn-primary btn-block" id="calcPriceBtn">${this.t('action.calculate')}</button>
                 <div class="calc-result hidden" id="priceResult">
-                    <div class="calc-result-label">Price Per Piece</div>
+                    <div class="calc-result-label">${this.t('calc.pricePerPiece')}</div>
                     <div class="calc-result-value" id="priceValue"></div>
                 </div>
             </div>
-            <div class="modal-actions mt-3">
-                <button type="button" class="btn btn-secondary btn-block" id="closeCalcBtn">Close</button>
-            </div>
+            <div class="modal-actions mt-3"><button class="btn btn-secondary" id="closeCalcBtn">${this.t('action.close')}</button></div>
         `);
         
         const tabs = modal.querySelectorAll('.calc-tab');
@@ -1140,52 +1517,95 @@ const UI = {
         if (view === 'home') {
             body = `
                 <div class="form-group">
-                    <label class="form-label">Units</label>
-                    <select class="form-select" id="unitsSelect">
-                        <option value="metric" ${AppState.units === 'metric' ? 'selected' : ''}>Metric (ms, s)</option>
-                        <option value="imperial" ${AppState.units === 'imperial' ? 'selected' : ''}>Imperial</option>
+                    <label class="form-label">${this.t('settings.language')}</label>
+                    <select class="form-select" id="langSelect">
+                        ${[
+                            {code:'en',name:'English'},
+                            {code:'hr',name:'Hrvatski'},
+                            {code:'it',name:'Italiano'},
+                            {code:'de',name:'Deutsch'},
+                            {code:'es',name:'Español'},
+                            {code:'pt-BR',name:'Português (Brasil)'},
+                            {code:'pt',name:'Português'},
+                            {code:'fr',name:'Français'},
+                            {code:'ru',name:'Русский'},
+                            {code:'da',name:'Dansk'},
+                            {code:'zh-Hans',name:'简体中文'},
+                            {code:'uk',name:'Українська'},
+                            {code:'fi',name:'Suomi'},
+                            {code:'sv',name:'Svenska'},
+                            {code:'ar',name:'العربية'},
+                            {code:'hi',name:'हिन्दी'},
+                            {code:'bn',name:'বাংলা'},
+                            {code:'ta',name:'தமிழ்'}
+                        ].map(o=>`<option value="${o.code}" ${AppState.lang===o.code ? 'selected' : ''}>${o.name}</option>`).join('')}
                     </select>
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Currency</label>
-                    <select class="form-select" id="currencySelect">
-                        <option value="€" ${AppState.currency === '€' ? 'selected' : ''}>Euro (€)</option>
-                        <option value="$" ${AppState.currency === '$' ? 'selected' : ''}>US Dollar ($)</option>
-                        <option value="£" ${AppState.currency === '£' ? 'selected' : ''}>Pound (£)</option>
+                    <label class="form-label">${this.t('settings.units')}</label>
+                    <select class="form-select" id="unitsSelect">
+                        <option value="metric" ${AppState.units === 'metric' ? 'selected' : ''}>${this.t('settings.metric')}</option>
+                        <option value="imperial" ${AppState.units === 'imperial' ? 'selected' : ''}>${this.t('settings.imperial')}</option>
                     </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">${this.t('settings.currency')}</label>
+                    <select class="form-select" id="currencySelect">
+                        <option value="€" ${AppState.currency === '€' ? 'selected' : ''}>${this.t('currency.euro')}</option>
+                        <option value="$" ${AppState.currency === '$' ? 'selected' : ''}>${this.t('currency.usd')}</option>
+                        <option value="£" ${AppState.currency === '£' ? 'selected' : ''}>${this.t('currency.gbp')}</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">${this.t('settings.power')}</label>
+                    <label style="display:flex;gap:8px;align-items:center;">
+                        <input type="checkbox" id="keepAwakeCharge" ${AppState.keepAwakeOnCharge ? 'checked' : ''}/>
+                        ${this.t('settings.keepAwake')}
+                    </label>
+                    <p style="margin:6px 0 0;color:var(--text-secondary);font-size:12px;">${this.t('info.wakeLockNote')}</p>
                 </div>
             `;
         } else if (view === 'folder') {
-            body = `<p>Project settings for the current project.</p>`;
+            body = `<p>${this.t('settings.projectSettings')}</p>`;
         } else if (view === 'result') {
             body = `
                 <div class="form-group">
-                    <label class="form-label">Time Display</label>
+                    <label class="form-label">${this.t('settings.timeDisplay')}</label>
                     <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
-                        <label><input type="radio" name="timeMode" value="hms" ${AppState.display.timeMode === 'hms' ? 'checked' : ''}/> Hours:Minutes:Seconds</label>
-                        <label><input type="radio" name="timeMode" value="ms" ${AppState.display.timeMode === 'ms' ? 'checked' : ''}/> Minutes:Seconds</label>
+                        <label><input type="radio" name="timeMode" value="hms" ${AppState.display.timeMode === 'hms' ? 'checked' : ''}/> ${this.t('settings.hms')}</label>
+                        <label><input type="radio" name="timeMode" value="ms" ${AppState.display.timeMode === 'ms' ? 'checked' : ''}/> ${this.t('settings.ms')}</label>
                     </div>
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Precision</label>
-                    <label><input type="checkbox" id="showHundredths" ${AppState.display.showHundredths ? 'checked' : ''}/> Show hundredths</label>
+                    <label class="form-label">${this.t('settings.precision')}</label>
+                    <label><input type="checkbox" id="showHundredths" ${AppState.display.showHundredths ? 'checked' : ''}/> ${this.t('settings.showHundredths')}</label>
                 </div>
-                <hr style="margin:12px 0;border:none;border-top:1px solid var(--border);"/>
+                <hr style="margin:20px 0;border:none;border-top:2px solid var(--border);"/>
                 <div class="menu-list">
-                    <button class="menu-item" id="remeasureItem">Re-measure This Item</button>
-                    <button class="menu-item" id="openUpdateImage">Upload/Change Image</button>
+                    <button class="menu-item" id="remeasureItem">${this.t('settings.reOrContinue')}</button>
+                    <button class="menu-item" id="openUpdateImage">${this.t('settings.uploadChangeImage')}</button>
                 </div>
             `;
         }
-        const modal = this.createModal('Settings', `
+        const modal = this.createModal(this.t('action.settings'), `
             <div>${body}</div>
             <div class="modal-actions mt-3">
-                <button class="btn btn-secondary" id="closeSettingsBtn">Close</button>
+                <button class="btn btn-secondary" id="closeSettingsBtn">${this.t('action.close')}</button>
             </div>
         `);
         modal.querySelector('#closeSettingsBtn').addEventListener('click', () => modal.remove());
 
         // Persist settings when changed (Home view)
+        const langSel = modal.querySelector('#langSelect');
+        if (langSel) {
+            langSel.addEventListener('change', () => {
+                AppState.lang = langSel.value;
+                localStorage.setItem('as_lang', AppState.lang);
+                this.applyLanguage();
+                modal.remove();
+                this.rerenderCurrentView();
+            });
+        }
         const unitsSel = modal.querySelector('#unitsSelect');
         if (unitsSel) {
             unitsSel.addEventListener('change', () => {
@@ -1200,14 +1620,30 @@ const UI = {
                 localStorage.setItem('as_currency', AppState.currency);
             });
         }
+        // Home: keep awake while charging toggle
+        const keepAwakeCb = modal.querySelector('#keepAwakeCharge');
+        if (keepAwakeCb) {
+            keepAwakeCb.addEventListener('change', async () => {
+                AppState.keepAwakeOnCharge = !!keepAwakeCb.checked;
+                localStorage.setItem('as_keepAwakeCharge', JSON.stringify(AppState.keepAwakeOnCharge));
+                if (!('wakeLock' in navigator)) {
+                    alert(this.t('error.wakeLockUnsupported'));
+                }
+                AppState.updateKeepAwakeBinding && AppState.updateKeepAwakeBinding();
+            });
+        }
         // Result view specific handlers
         const remeasureBtn = modal.querySelector('#remeasureItem');
         if (remeasureBtn) {
             remeasureBtn.addEventListener('click', () => {
                 modal.remove();
-                AppState.remeasureResultId = AppState.currentResult;
+                // Prepare choice on Stopwatch screen
+                AppState.remeasureResultId = null;
+                AppState.continueResultId = null;
+                AppState.resultChoiceTargetId = AppState.currentResult;
                 StopwatchManager.reset(true);
                 this.renderStopwatch();
+                this.showReOrContinuePrompt();
             });
         }
         const upBtn = modal.querySelector('#openUpdateImage');
@@ -1256,9 +1692,9 @@ const UI = {
         const currentPalette = currentMode === 'dark' ? AppState.themePalette_dark : AppState.themePalette_light;
         const currentCustomColors = currentMode === 'dark' ? AppState.customColors_dark : AppState.customColors_light;
 
-        const modal = this.createModal('Theme Customization', `
+        const modal = this.createModal(this.t('theme.title'), `
             <div class="form-group">
-                <label class="form-label">Preset Palettes (${currentMode === 'dark' ? 'Dark' : 'Light'} Mode)</label>
+                <label class="form-label">${this.t('theme.preset')} (${currentMode === 'dark' ? this.t('theme.darkMode') : this.t('theme.lightMode')})</label>
                 <div class="theme-palette-grid">
                     ${relevantPalettes.map(p => `
                         <button type="button" class="palette-card ${currentPalette === p.id ? 'active' : ''}" data-palette="${p.id}">
@@ -1274,30 +1710,30 @@ const UI = {
             </div>
             <hr style="margin:20px 0;border:none;border-top:2px solid var(--border);"/>
             <div class="form-group">
-                <label class="form-label">Custom Colors</label>
-                <p style="font-size:12px;color:var(--text-secondary);margin-bottom:12px;">Fine-tune your theme by customizing individual colors.</p>
+                <label class="form-label">${this.t('theme.customColors')}</label>
+                <p style="font-size:12px;color:var(--text-secondary);margin-bottom:12px;">${this.t('theme.fineTune')}</p>
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
                     <div>
-                        <label style="font-size:12px;color:var(--text-secondary);display:block;margin-bottom:4px;">Background</label>
+                        <label style="font-size:12px;color:var(--text-secondary);display:block;margin-bottom:4px;">${this.t('theme.background')}</label>
                         <input type="color" class="color-picker" id="customPrimary" value="${currentCustomColors?.primary || palettes[currentMode][0].colors.primary}">
                     </div>
                     <div>
-                        <label style="font-size:12px;color:var(--text-secondary);display:block;margin-bottom:4px;">Accent</label>
+                        <label style="font-size:12px;color:var(--text-secondary);display:block;margin-bottom:4px;">${this.t('theme.accent')}</label>
                         <input type="color" class="color-picker" id="customAccent" value="${currentCustomColors?.accent || palettes[currentMode][0].colors.accent}">
                     </div>
                     <div>
-                        <label style="font-size:12px;color:var(--text-secondary);display:block;margin-bottom:4px;">Text</label>
+                        <label style="font-size:12px;color:var(--text-secondary);display:block;margin-bottom:4px;">${this.t('theme.text')}</label>
                         <input type="color" class="color-picker" id="customText" value="${currentCustomColors?.text || palettes[currentMode][0].colors.text}">
                     </div>
                     <div>
-                        <label style="font-size:12px;color:var(--text-secondary);display:block;margin-bottom:4px;">Border</label>
+                        <label style="font-size:12px;color:var(--text-secondary);display:block;margin-bottom:4px;">${this.t('theme.border')}</label>
                         <input type="color" class="color-picker" id="customBorder" value="${currentCustomColors?.border || palettes[currentMode][0].colors.border}">
                     </div>
                 </div>
-                <button class="btn btn-secondary btn-block" id="applyCustomBtn" style="margin-top:12px;">Apply Custom Theme</button>
+                <button class="btn btn-secondary btn-block" id="applyCustomBtn" style="margin-top:12px;">${this.t('theme.applyCustom')}</button>
             </div>
             <div class="modal-actions mt-3">
-                <button class="btn btn-secondary" id="closeThemeBtn">Close</button>
+                <button class="btn btn-secondary" id="closeThemeBtn">${this.t('action.close')}</button>
             </div>
         `);
 
@@ -1392,8 +1828,9 @@ const UI = {
         const menu = document.createElement('div');
         menu.className = 'menu-popover';
         menu.innerHTML = `
-            <button class="menu-item" data-action="color" data-folder-id="${folderId}">Choose Project Color</button>
-            <button class="menu-item" data-action="delete" data-folder-id="${folderId}">Delete</button>
+            <button class="menu-item" data-action="color" data-folder-id="${folderId}">${this.t('menu.chooseProjectColor')}</button>
+            <button class="menu-item" data-action="text-color" data-folder-id="${folderId}">${this.t('menu.chooseProjectTextColor')}</button>
+            <button class="menu-item" data-action="delete" data-folder-id="${folderId}">${this.t('menu.delete')}</button>
         `;
         document.body.appendChild(menu);
         const rect = anchorEl.getBoundingClientRect();
@@ -1407,7 +1844,7 @@ const UI = {
             const action = item.dataset.action;
             
             if (action === 'delete') {
-                if (confirm('Delete this project and all its results?')) {
+                if (confirm(this.t('confirm.deleteProject'))) {
                     DataManager.deleteFolder(folderId);
                     this.closeResultMenu();
                     this.renderHome();
@@ -1415,6 +1852,9 @@ const UI = {
             } else if (action === 'color') {
                 this.closeResultMenu();
                 this.showFolderColorDialog(folderId);
+            } else if (action === 'text-color') {
+                this.closeResultMenu();
+                this.showFolderTextColorDialog(folderId);
             }
         });
         
@@ -1437,9 +1877,9 @@ const UI = {
             '#6366f1', '#84cc16', '#06b6d4', '#a855f7'
         ];
         
-        const modal = this.createModal('Choose Project Color', `
+        const modal = this.createModal(this.t('menu.chooseProjectColor'), `
             <div class="form-group">
-                <label class="form-label">Preset Colors</label>
+                <label class="form-label">${this.t('color.preset')}</label>
                 <div class="color-palette-grid">
                     ${presetColors.map(color => `
                         <button class="color-palette-btn" data-color="${color}" style="background: ${color};"></button>
@@ -1447,12 +1887,12 @@ const UI = {
                 </div>
             </div>
             <div class="form-group">
-                <label class="form-label">Custom Color</label>
+                <label class="form-label">${this.t('color.custom')}</label>
                 <input type="color" class="color-picker" id="customColorPicker" value="${folder.color || '#3b82f6'}">
             </div>
             <div class="modal-actions mt-3">
-                <button class="btn btn-secondary" id="cancelColorBtn">Cancel</button>
-                <button class="btn btn-primary" id="applyColorBtn">Apply</button>
+                <button class="btn btn-secondary" id="cancelColorBtn">${this.t('action.cancel')}</button>
+                <button class="btn btn-primary" id="applyColorBtn">${this.t('action.apply')}</button>
             </div>
         `);
         
@@ -1484,11 +1924,60 @@ const UI = {
         });
     },
     
+    showFolderTextColorDialog(folderId) {
+        const folders = DataManager.getFolders();
+        const folder = folders.find(f => f.id === folderId);
+        if (!folder) return;
+        const presetColors = [
+            '#0f172a', '#111827', '#1f2937', '#334155', '#475569',
+            '#64748b', '#94a3b8', '#e5e7eb', '#f9fafb', '#ffffff'
+        ];
+        const modal = this.createModal(this.t('menu.chooseProjectTextColor'), `
+            <div class="form-group">
+                <label class="form-label">${this.t('color.preset')}</label>
+                <div class="color-palette-grid">
+                    ${presetColors.map(color => `
+                        <button class="color-palette-btn" data-color="${color}" style="background: ${color}; border: 1px solid var(--border);"></button>
+                    `).join('')}
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="form-label">${this.t('color.custom')}</label>
+                <input type="color" class="color-picker" id="customTextColorPicker" value="${folder.textColor || '#ffffff'}">
+            </div>
+            <div class="modal-actions mt-3">
+                <button class="btn btn-secondary" id="cancelTextColorBtn">${this.t('action.cancel')}</button>
+                <button class="btn btn-primary" id="applyTextColorBtn">${this.t('action.apply')}</button>
+            </div>
+        `);
+        modal.querySelector('#cancelTextColorBtn').addEventListener('click', () => modal.remove());
+        let selectedColor = folder.textColor || null;
+        modal.querySelectorAll('.color-palette-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                selectedColor = btn.dataset.color;
+                modal.querySelectorAll('.color-palette-btn').forEach(b => b.classList.remove('selected'));
+                btn.classList.add('selected');
+            });
+        });
+        modal.querySelector('#customTextColorPicker').addEventListener('change', (e) => {
+            selectedColor = e.target.value;
+        });
+        modal.querySelector('#applyTextColorBtn').addEventListener('click', () => {
+            const idx = folders.findIndex(f => f.id === folderId);
+            if (idx !== -1) {
+                folders[idx].textColor = selectedColor;
+                DataManager.saveFolders(folders);
+            }
+            modal.remove();
+            this.renderHome();
+        });
+    },
+    
     showResultMenu(anchorEl, resultId) {
         this.closeResultMenu();
         const menu = document.createElement('div');
         menu.className = 'menu-popover';
-        menu.innerHTML = `<button class="menu-item" data-action="delete" data-result-id="${resultId}">Delete</button>`;
+        menu.innerHTML = `<button class="menu-item" data-action="delete" data-result-id="${resultId}">${this.t('menu.delete')}</button>`;
         document.body.appendChild(menu);
         const rect = anchorEl.getBoundingClientRect();
         menu.style.top = `${rect.bottom + window.scrollY + 6}px`;
@@ -1507,20 +1996,20 @@ const UI = {
     },
 
     showResultImageDialog(resultId) {
-        const modal = this.createModal('Update Image', `
+        const modal = this.createModal(this.t('dialog.updateImageTitle') || 'Update Image', `
             <div class="form-group">
-                <label class="form-label">Choose Image</label>
+                <label class="form-label">${this.t('action.chooseImage')}</label>
                 <div class="file-input-wrapper">
                     <label class="file-input-label">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-                        <span>Choose Image</span>
+                        <span>${this.t('action.chooseImage')}</span>
                         <input type="file" class="file-input" id="updateImageInput" accept="image/*">
                     </label>
                 </div>
             </div>
             <div class="modal-actions">
-                <button class="btn btn-secondary" id="cancelUpdateBtn">Cancel</button>
-                <button class="btn btn-success" id="applyUpdateBtn" disabled>Save</button>
+                <button class="btn btn-secondary" id="cancelUpdateBtn">${this.t('action.cancel')}</button>
+                <button class="btn btn-success" id="applyUpdateBtn" disabled>${this.t('action.save')}</button>
             </div>
         `);
         const input = modal.querySelector('#updateImageInput');

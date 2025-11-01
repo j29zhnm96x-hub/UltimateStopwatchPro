@@ -1,3 +1,45 @@
+/* Menu list inside settings modal (Result view) */
+.menu-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    align-items: center;
+}
+
+/* Re-measure / Continue Choice */
+.choice-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 12px;
+}
+
+.choice-card {
+    display: block;
+    width: 100%;
+    text-align: left;
+    background: var(--bg-secondary);
+    border: 2px solid var(--border);
+    border-radius: 12px;
+    padding: 14px 16px;
+    cursor: pointer;
+    transition: transform 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+}
+
+.choice-card:hover { transform: translateY(-1px); }
+.choice-card.active { border-color: var(--accent); background: var(--bg-tertiary); }
+
+.choice-title { font-size: 16px; font-weight: 700; color: var(--text-primary); }
+.choice-sub { font-size: 13px; color: var(--text-secondary); margin-top: 2px; }
+.choice-desc { font-size: 12px; color: var(--text-secondary); margin-top: 6px; }
+
+.menu-list .menu-item {
+    font-size: 14px;
+    padding: 10px 12px;
+    text-align: center;
+    color: var(--warning);
+    width: auto;
+    display: inline-block;
+}
 /* Reset and Base Styles */
 * {
     margin: 0;
@@ -198,8 +240,23 @@ main {
 }
 
 .fab.large {
-    width: 64px;
-    height: 64px;
+    width: 72px;
+    height: 72px;
+}
+
+/* Pulsating animation for primary stopwatch FAB */
+.fab.pulse {
+    animation: pulseFab 1.6s ease-in-out infinite;
+}
+
+@keyframes pulseFab {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.15); }
+    100% { transform: scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .fab.pulse { animation: none; }
 }
 
 /* Folders Grid */
@@ -231,13 +288,13 @@ main {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    color: var(--text-primary);
+    color: var(--folder-text, var(--text-primary));
     font-weight: 600;
 }
 
 .folder-count {
     font-size: 14px;
-    color: var(--text-secondary);
+    color: var(--folder-text-secondary, var(--text-secondary));
     font-weight: 500;
 }
 
@@ -441,18 +498,21 @@ main {
     box-shadow: 0 8px 24px var(--shadow);
     padding: 8px;
     z-index: 2000;
+    min-width: 220px;
 }
 
 .menu-item {
     display: block;
     width: 100%;
-    padding: 10px 12px;
+    padding: 12px 14px;
     border: none;
     background: transparent;
     color: var(--text-primary);
     text-align: left;
     border-radius: 8px;
     cursor: pointer;
+    font-size: 16px;
+    white-space: nowrap;
 }
 
 .menu-item:hover,
