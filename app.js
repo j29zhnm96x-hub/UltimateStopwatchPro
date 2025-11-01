@@ -24,20 +24,29 @@ const AppState = {
     // Wake Lock helpers (keep screen awake while charging)
     async requestWakeLock() {
         try {
-            if (!('wakeLock' in navigator)) return null;
-            this._wakeLock = await navigator.wakeLock.request('screen');
-            this._wakeLock.addEventListener('release', () => { /* released */ });
-            return this._wakeLock;
+            if ('wakeLock' in navigator) {
+                this._wakeLock = await navigator.wakeLock.request('screen');
+                this._wakeLock.addEventListener('release', () => { /* released */ });
+                return this._wakeLock;
+            }
+            // Fallback for iOS Safari via NoSleep.js (requires user gesture)
+            if (typeof window !== 'undefined' && window.NoSleep) {
+                if (!this._noSleep) this._noSleep = new window.NoSleep();
+                if (!this._noSleepEnabled) {
+                    await this._noSleep.enable();
+                    this._noSleepEnabled = true;
+                }
+                return this._noSleep;
+            }
+            return null;
         } catch (e) {
             return null;
         }
     },
     async releaseWakeLock() {
         try {
-            if (this._wakeLock) {
-                await this._wakeLock.release();
-                this._wakeLock = null;
-            }
+            if (this._wakeLock) { await this._wakeLock.release(); this._wakeLock = null; }
+            if (this._noSleep && this._noSleepEnabled) { await this._noSleep.disable(); this._noSleepEnabled = false; }
         } catch (e) { /* ignore */ }
     },
     async updateKeepAwakeBinding() {
@@ -52,8 +61,16 @@ const AppState = {
             return;
         }
         if (!('getBattery' in navigator)) {
-            // No battery info; try to acquire unconditionally
-            await this.requestWakeLock();
+            // No Battery API (e.g., iOS Safari): enable when visible
+            this._onVisibilityChange = async () => {
+                if (document.visibilityState === 'visible' && AppState.keepAwakeOnCharge) {
+                    await this.requestWakeLock();
+                } else {
+                    await this.releaseWakeLock();
+                }
+            };
+            document.addEventListener('visibilitychange', this._onVisibilityChange);
+            await this._onVisibilityChange();
             return;
         }
         this._battery = await navigator.getBattery();
@@ -525,6 +542,14 @@ const UI = {
         this.setupGlobalInputHandlers();
         this.setupKeyboardShortcuts();
         AppState.updateKeepAwakeBinding && AppState.updateKeepAwakeBinding();
+        // iOS Safari fallback requires a user gesture to enable NoSleep video
+        if (AppState.keepAwakeOnCharge) {
+            const firstInteract = async () => {
+                await AppState.requestWakeLock();
+            };
+            window.addEventListener('touchstart', firstInteract, { once: true, passive: true });
+            window.addEventListener('click', firstInteract, { once: true });
+        }
         this.applyLanguage();
         this.renderHome();
     },
