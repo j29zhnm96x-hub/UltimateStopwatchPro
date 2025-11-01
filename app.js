@@ -636,6 +636,39 @@ const UI = {
         }
     },
 
+    positionMenu(anchorRect, menuEl) {
+        const margin = 8;
+        const gap = 6;
+        const vw = window.innerWidth;
+        const vh = window.innerHeight;
+        const scrollX = window.scrollX || window.pageXOffset;
+        const scrollY = window.scrollY || window.pageYOffset;
+
+        // Base position: below anchor
+        let top = anchorRect.bottom + scrollY + gap;
+        // Prefer aligning right edge to anchor's right (typical dropdown to the left of the anchor edge)
+        let left = anchorRect.right + scrollX - menuEl.offsetWidth;
+
+        // Clamp horizontally to viewport
+        if (left < scrollX + margin) {
+            left = scrollX + margin;
+        }
+        if (left + menuEl.offsetWidth > scrollX + vw - margin) {
+            left = scrollX + vw - margin - menuEl.offsetWidth;
+        }
+
+        // If menu goes off bottom, flip above the anchor
+        if (top + menuEl.offsetHeight > scrollY + vh - margin) {
+            top = anchorRect.top + scrollY - menuEl.offsetHeight - gap;
+            // If still offscreen at top, clamp to margin
+            if (top < scrollY + margin) {
+                top = scrollY + margin;
+            }
+        }
+
+        return { top, left };
+    },
+
     setupEventListeners() {
         // Theme toggle long-press handler
         let themeTogglePressTimer = null;
@@ -1536,6 +1569,7 @@ const UI = {
                             {code:'pt-BR',name:'Português (Brasil)'},
                             {code:'pt',name:'Português'},
                             {code:'fr',name:'Français'},
+                            {code:'pl',name:'Polski'},
                             {code:'ru',name:'Русский'},
                             {code:'da',name:'Dansk'},
                             {code:'zh-Hans',name:'简体中文'},
@@ -1842,8 +1876,9 @@ const UI = {
         `;
         document.body.appendChild(menu);
         const rect = anchorEl.getBoundingClientRect();
-        menu.style.top = `${rect.bottom + window.scrollY + 6}px`;
-        menu.style.left = `${rect.right + window.scrollX - menu.offsetWidth}px`;
+        const pos = this.positionMenu(rect, menu);
+        menu.style.top = `${pos.top}px`;
+        menu.style.left = `${pos.left}px`;
         this._openMenu = menu;
         
         menu.addEventListener('click', (e) => {
@@ -1988,8 +2023,9 @@ const UI = {
         menu.innerHTML = `<button class="menu-item" data-action="delete" data-result-id="${resultId}">${this.t('menu.delete')}</button>`;
         document.body.appendChild(menu);
         const rect = anchorEl.getBoundingClientRect();
-        menu.style.top = `${rect.bottom + window.scrollY + 6}px`;
-        menu.style.left = `${rect.right + window.scrollX - menu.offsetWidth}px`;
+        const pos = this.positionMenu(rect, menu);
+        menu.style.top = `${pos.top}px`;
+        menu.style.left = `${pos.left}px`;
         this._openMenu = menu;
         const close = (ev) => {
             if (!menu.contains(ev.target) && ev.target !== anchorEl) {

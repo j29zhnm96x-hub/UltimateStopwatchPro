@@ -158,5 +158,30 @@
     'label.h':'ம','label.m':'நி','label.s':'வி','currency.euro':'யூரோ (€)','currency.usd':'டாலர் ($)','currency.gbp':'பவுண்ட் (£)'
   };
 
+  window.LocalesExtra['pl'] = {
+    'title.app':'Ultimate Stopwatch',
+    'action.settings':'Ustawienia','action.close':'Zamknij','action.cancel':'Anuluj','action.create':'Utwórz','action.save':'Zapisz','action.update':'Aktualizuj','action.apply':'Zastosuj','action.proceed':'Kontynuuj','action.resume':'Wznów','action.pause':'Wstrzymaj','action.stop':'Stop','action.reset':'Resetuj','action.start':'Start','action.next':'Dalej','action.calculate':'Oblicz','action.chooseImage':'Wybierz obraz',
+    'header.stopwatch':'Stoper',
+    'home.empty1':'Brak projektów.','home.empty2':'Utwórz projekt, aby rozpocząć!',
+    'folder.empty1':'Brak wyników.','folder.empty2':'Rozpocznij pomiar, aby utworzyć wynik!','folder.result':'wynik','folder.results':'wyniki',
+    'settings.language':'Język','settings.units':'Jednostki','settings.metric':'Metryczne (ms, s)','settings.imperial':'Imperialne','settings.currency':'Waluta','settings.power':'Zasilanie','settings.keepAwake':'Nie wygaszaj ekranu podczas ładowania','settings.timeDisplay':'Wyświetlanie czasu','settings.hms':'Godziny:Minuty:Sekundy','settings.ms':'Minuty:Sekundy','settings.precision':'Precyzja','settings.showHundredths':'Pokaż setne','settings.reOrContinue':'Pomiar od nowa lub kontynuacja od miejsca przerwania','settings.uploadChangeImage':'Prześlij/Zmień obraz','settings.projectSettings':'Ustawienia projektu dla bieżącego projektu.',
+    'theme.title':'Dostosowywanie motywu','theme.preset':'Gotowe palety','theme.customColors':'Własne kolory','theme.background':'Tło','theme.accent':'Akcent','theme.text':'Tekst','theme.border':'Obramowanie','theme.applyCustom':'Zastosuj własny motyw','theme.fineTune':'Dopracuj motyw, dostosowując poszczególne kolory.','theme.darkMode':'Tryb ciemny','theme.lightMode':'Tryb jasny',
+    'color.preset':'Kolory gotowe','color.custom':'Kolor własny',
+    'dialog.updateImageTitle':'Aktualizuj obraz',
+    'newProject.title':'Utwórz nowy projekt','newProject.name':'Nazwa projektu',
+    'save.titleSave':'Zapisz wynik','save.titleUpdate':'Aktualizuj wynik','save.resultName':'Nazwa wyniku','save.project':'Projekt','save.selectProject':'Wybierz projekt...','save.createNewProject':'+ Utwórz nowy projekt','save.newProjectName':'Nazwa nowego projektu','save.attachImage':'Dołącz obraz (opcjonalnie)',
+    'menu.chooseProjectColor':'Wybierz kolor projektu','menu.chooseProjectTextColor':'Wybierz kolor tekstu projektu','menu.delete':'Usuń',
+    'resultDetail.totalTime':'Łączny czas',
+    'confirm.deleteProject':'Usunąć ten projekt i wszystkie jego wyniki?','confirm.deleteResult':'Usunąć ten wynik?','confirm.stopSession':'Zatrzymać bieżącą sesję?',
+    'stopwatch.laps':'Okrążenia','stopwatch.avg':'Śred.','stopwatch.avgLap':'Średnie okrążenie','stopwatch.lap':'Okrążenie','stopwatch.allLaps':'Wszystkie okrążenia',
+    'calc.title':'Oblicz','calc.tab.quantity':'Ilość','calc.tab.time':'Czas','calc.tab.price':'Cena','calc.numberOfItems':'Liczba sztuk','calc.estimatedTotalTime':'Szacowany łączny czas','calc.duration':'Czas trwania','calc.estimatedQuantity':'Szacowana ilość','calc.hourlyWage':'Stawka godzinowa','calc.pricePerPiece':'Cena za sztukę',
+    'choice.modalTitle':'Jak chcesz kontynuować?','choice.continueTitle':'Kontynuuj od miejsca przerwania','choice.remeasureTitle':'Mierz od nowa','choice.continueDesc':'Zachowuje poprzednie okrążenia i dodaje nowe.','choice.remeasureDesc':'Zastępuje poprzednie pomiary nowymi.',
+    'tooltip.newProject':'Nowy projekt','tooltip.startStopwatch':'Uruchom stoper',
+    'error.wakeLockUnsupported':'Utrzymanie ekranu włączonego nie jest obsługiwane w tej przeglądarce.','error.saveFailed':'Zapis nie powiódł się: pamięć jest pełna lub dane są zbyt duże. Rozważ usunięcie starszych wyników lub obrazów.','error.projectNotFound':'Nie znaleziono projektu. Mógł zostać usunięty.',
+    'info.wakeLockNote':'Używa Screen Wake Lock API, gdy jest dostępne.',
+    'label.h':'h','label.m':'m','label.s':'s','currency.euro':'Euro (€)','currency.usd':'Dolar amerykański ($)','currency.gbp':'Funt (£)',
+    'prompt.enterProjectName':'Wpisz nazwę projektu'
+  };
+
   // ADD_MORE_LOCALES_HERE
 })();
