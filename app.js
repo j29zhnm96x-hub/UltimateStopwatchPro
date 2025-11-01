@@ -768,7 +768,7 @@ const UI = {
                     </div>
                 `}
             </main>
-            ${results.length === 0 ? `
+            ${!AppState.stopwatch.isRunning ? `
                 <div class="fab-container">
                     <button class="fab large" id="startStopwatchBtn" title="Start Stopwatch">
                         <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
