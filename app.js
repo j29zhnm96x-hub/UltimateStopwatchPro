@@ -357,6 +357,8 @@ const Utils = {
 // Lightweight sound manager for UI actions (preloaded, minimal latency)
 const Sound = {
     clips: {},
+    buffers: {},
+    _ctx: null,
     initialized: false,
     files: {
         start: 'audio/single-tone.mp3',
@@ -370,12 +372,16 @@ const Sound = {
     },
     init() {
         if (this.initialized) return;
+        const Ctx = window.AudioContext || window.webkitAudioContext;
+        if (Ctx) this._ctx = this._ctx || new Ctx();
         for (const [k, src] of Object.entries(this.files)) {
             const a = new Audio(src);
             a.preload = 'auto';
             a.load();
             this.clips[k] = a;
         }
+        // Preload small UI sounds into WebAudio for ultra low latency (fallback to HTMLAudio if decode fails)
+        ['ui','confirm'].forEach(k => this._preloadBuffer(k, this.files[k]));
         // Unlock on first gesture (iOS)
         const unlock = () => {
             try {
@@ -385,19 +391,45 @@ const Sound = {
                     // Prime playback pipeline for iOS PWAs
                     a.play().then(() => { a.pause(); a.muted = false; }).catch(() => { a.muted = false; });
                 }
+                if (this._ctx && this._ctx.state === 'suspended') {
+                    this._ctx.resume().catch(()=>{});
+                }
+                // Also resume WebAudio context used by Utils.beep on iOS
+                const Ctx = window.AudioContext || window.webkitAudioContext;
+                if (Ctx) {
+                    if (!Utils._audioCtx) Utils._audioCtx = new Ctx();
+                    if (Utils._audioCtx && Utils._audioCtx.state === 'suspended') {
+                        Utils._audioCtx.resume().catch(()=>{});
+                    }
+                }
             } catch {}
         };
         window.addEventListener('touchstart', unlock, { once: true, passive: true });
         window.addEventListener('click', unlock, { once: true });
         this.initialized = true;
     },
+    async _preloadBuffer(key, url) {
+        try {
+            if (!this._ctx) return;
+            const res = await fetch(url);
+            const arr = await res.arrayBuffer();
+            this.buffers[key] = await this._ctx.decodeAudioData(arr);
+        } catch (_) { /* ignore, fallback to HTMLAudio */ }
+    },
     play(name) {
         const base = this.clips[name];
         if (!base) return;
         try {
-            // clone to allow overlaps and avoid cutting off
-            const a = base.cloneNode(true);
-            a.play().catch(()=>{});
+            if (this._ctx && this.buffers[name]) {
+                const src = this._ctx.createBufferSource();
+                src.buffer = this.buffers[name];
+                src.connect(this._ctx.destination);
+                src.start(0);
+            } else {
+                // clone to allow overlaps and avoid cutting off
+                const a = base.cloneNode(true);
+                a.play().catch(()=>{});
+            }
         } catch {}
     }
 };
@@ -843,6 +875,8 @@ const UI = {
     _canUseSpeech() {
         return typeof window !== 'undefined' && (window.SpeechRecognition || window.webkitSpeechRecognition);
     },
+    _voiceLastExecAt: 0,
+    _voiceCooldownMs: 900,
     _getRecognizer() {
         if (!this._canUseSpeech()) return null;
         if (AppState.voice.recognizer) return AppState.voice.recognizer;
@@ -850,12 +884,30 @@ const UI = {
         const rec = new Ctor();
         rec.lang = AppState.voice.lang || (AppState.lang === 'hr' ? 'hr-HR' : 'en-US');
         rec.continuous = true;
-        rec.interimResults = false;
-        rec.maxAlternatives = 3;
+        rec.interimResults = true; // allow early detection
+        rec.maxAlternatives = 1; // faster
+        // Provide a basic grammar of allowed commands (may be ignored by some engines)
+        try {
+            const GL = window.SpeechGrammarList || window.webkitSpeechGrammarList;
+            if (GL) {
+                const list = new GL();
+                const jsgf = '#JSGF V1.0; grammar cmd; public <command> = start | next | pause | resume | stop | reset | pokreni | kreni | sljede | krug | pauza | nastavi | zaustavi | stani | resetiraj ;';
+                list.addFromString(jsgf, 1);
+                rec.grammars = list;
+            }
+        } catch(_) {}
         rec.onresult = (event) => {
-            const last = event.results[event.results.length - 1];
-            const transcript = (last[0] && last[0].transcript) ? last[0].transcript.toLowerCase().trim() : '';
-            if (transcript) this._handleVoiceCommand(transcript);
+            for (let i = event.resultIndex; i < event.results.length; i++) {
+                const res = event.results[i];
+                const alt = res[0];
+                const transcript = (alt && alt.transcript ? alt.transcript : '').toLowerCase().trim();
+                if (!transcript) continue;
+                // Execute immediately on interim if we detect a clear keyword
+                if (this._tryExecuteVoiceFromTranscript(transcript, res.isFinal)) {
+                    // If executed, break to avoid multiple triggers
+                    break;
+                }
+            }
         };
         rec.onend = () => {
             AppState.voice.recognizing = false;
@@ -886,7 +938,9 @@ const UI = {
         try { rec.onend = null; rec.stop(); } catch(_) {}
         AppState.voice.recognizing = false;
     },
-    _handleVoiceCommand(text) {
+    _tryExecuteVoiceFromTranscript(text, isFinal) {
+        const now = Date.now();
+        if (now - this._voiceLastExecAt < this._voiceCooldownMs) return false;
         const t = (text || '').toLowerCase();
         const has = (...words) => words.some(w => t.includes(w));
         let cmd = null;
@@ -896,12 +950,13 @@ const UI = {
         else if (has('resume','continue','nastavi')) cmd = 'resume';
         else if (has('stop','zaustavi','stani')) cmd = 'stop';
         else if (has('reset','restart','resetiraj')) cmd = 'reset';
-        if (!cmd) return;
+        if (!cmd) return false;
 
         if (cmd === 'start') {
             if (AppState.resultChoiceTargetId && !AppState.remeasureResultId && !AppState.continueResultId) {
                 this.showReOrContinuePrompt();
-                return;
+                this._voiceLastExecAt = now;
+                return true;
             }
             if (!AppState.stopwatch.isRunning && !AppState.stopwatch.isPaused) {
                 if (AppState.countdownSeconds && !AppState.countdownActive) {
@@ -912,13 +967,15 @@ const UI = {
                     this.renderStopwatch();
                 }
             }
-            return;
+            this._voiceLastExecAt = now;
+            return true;
         }
-        if (cmd === 'next') { if (AppState.stopwatch.isRunning && !AppState.stopwatch.isPaused) { Sound.play('lap'); StopwatchManager.recordLap(); } return; }
-        if (cmd === 'pause') { if (AppState.stopwatch.isRunning && !AppState.stopwatch.isPaused) { Sound.play('pause'); StopwatchManager.pause(); this.renderStopwatch(); } return; }
-        if (cmd === 'resume') { if (AppState.stopwatch.isPaused) { Sound.play('resume'); StopwatchManager.resume(); this.renderStopwatch(); } return; }
-        if (cmd === 'stop') { Sound.play('stop'); StopwatchManager.stop(); return; }
-        if (cmd === 'reset') { Sound.play('reset'); StopwatchManager.reset(true); return; }
+        if (cmd === 'next') { if (AppState.stopwatch.isRunning && !AppState.stopwatch.isPaused) { Sound.play('lap'); StopwatchManager.recordLap(); } this._voiceLastExecAt = now; return true; }
+        if (cmd === 'pause') { if (AppState.stopwatch.isRunning && !AppState.stopwatch.isPaused) { Sound.play('pause'); StopwatchManager.pause(); this.renderStopwatch(); } this._voiceLastExecAt = now; return true; }
+        if (cmd === 'resume') { if (AppState.stopwatch.isPaused) { Sound.play('resume'); StopwatchManager.resume(); this.renderStopwatch(); } this._voiceLastExecAt = now; return true; }
+        if (cmd === 'stop') { Sound.play('stop'); StopwatchManager.stop(); this._voiceLastExecAt = now; return true; }
+        if (cmd === 'reset') { Sound.play('reset'); StopwatchManager.reset(true); this._voiceLastExecAt = now; return true; }
+        return false;
     },
 
     updateThemeToggleIcon() {
@@ -967,17 +1024,7 @@ const UI = {
         let longPressTriggered = false;
         let recentTouchToggle = false; // suppress subsequent click after touch
         
-        // Generic UI click sound with low latency (capture to run before handlers)
-        this.app.addEventListener('pointerdown', (e) => {
-            const el = e.target.closest('button, .menu-item, .palette-card');
-            if (!el) return;
-            // Skip if it's one of the stopwatch controls (handled specifically)
-            if (e.target.closest('#startBtn, #resumeBtn, #pauseBtn, #stopBtn, #lapBtn, #resetBtn')) return;
-            // Heuristic: confirmation buttons
-            const txt = (el.textContent || '').trim().toLowerCase();
-            const isConfirm = /apply|save|update|create|proceed|ok|yes/.test(txt);
-            Sound.play(isConfirm ? 'confirm' : 'ui');
-        }, true);
+        // UI click sounds are handled globally in setupClickSounds()
         
         const startLongPress = (e) => {
             const btn = e.target.closest('#themeToggle');
