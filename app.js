@@ -1,4 +1,5 @@
 /// Ultimate Stopwatch - State & Data Management
+/// Ultimate Stopwatch - State & Data Management
 const AppState = {
     currentView: 'home',
     currentFolder: null,
@@ -21,33 +22,7 @@ const AppState = {
         showHundredths: JSON.parse(localStorage.getItem('as_showHundredths') || 'true')
     },
 
-    showHelpDialog() {
-        const content = `
-            <div class="help-body">
-                <p><strong>${this.t('help.whatTitle')}</strong><br>${this.t('help.whatText')}</p>
-                <hr>
-                <p><strong>${this.t('help.controlsTitle')}</strong><br>${this.t('help.controlsText')}</p>
-                <ul>
-                    <li>${this.t('help.ctrlStart')}</li>
-                    <li>${this.t('help.ctrlNext')}</li>
-                    <li>${this.t('help.ctrlPause')}</li>
-                    <li>${this.t('help.ctrlResume')}</li>
-                    <li>${this.t('help.ctrlStop')}</li>
-                    <li>${this.t('help.ctrlReset')}</li>
-                </ul>
-                <p><strong>${this.t('help.countdownTitle')}</strong><br>${this.t('help.countdownText')}</p>
-                <p><strong>${this.t('help.voiceTitle')}</strong><br>${this.t('help.voiceText')}</p>
-                <p><strong>${this.t('help.soundsTitle')}</strong><br>${this.t('help.soundsText')}</p>
-                <p><strong>${this.t('help.saveTitle')}</strong><br>${this.t('help.saveText')}</p>
-                <p><strong>${this.t('help.tipsTitle')}</strong><br>${this.t('help.tipsText')}</p>
-            </div>`;
-        const modal = this.createModal(this.t('help.title'), content);
-        const btn = document.createElement('div');
-        btn.style.textAlign = 'right';
-        btn.innerHTML = `<button class="btn btn-primary" id="closeHelpBtn">${this.t('action.close')}</button>`;
-        modal.querySelector('.modal-content').appendChild(btn);
-        modal.querySelector('#closeHelpBtn').addEventListener('click', ()=> modal.remove());
-    },
+    
     // Countdown-to-start (ephemeral)
     countdownSeconds: null,
     countdownIntervalId: null,
@@ -744,7 +719,6 @@ const UI = {
         this.setupEventListeners();
         this.setupGlobalInputHandlers();
         this.setupKeyboardShortcuts();
-        this.setupOrientationGuard();
         AppState.updateKeepAwakeBinding && AppState.updateKeepAwakeBinding();
         // iOS Safari fallback requires a user gesture to enable NoSleep video
         if (AppState.keepAwakeOnCharge) {
@@ -754,26 +728,9 @@ const UI = {
             window.addEventListener('touchstart', firstInteract, { once: true, passive: true });
             window.addEventListener('click', firstInteract, { once: true });
         }
+        try { if (screen.orientation && screen.orientation.lock) { screen.orientation.lock('portrait').catch(()=>{}); } } catch(_) {}
         this.applyLanguage();
         this.renderHome();
-    },
-    setupOrientationGuard() {
-        const ensure = () => {
-            let guard = document.getElementById('orientationGuard');
-            if (!guard) {
-                guard = document.createElement('div');
-                guard.id = 'orientationGuard';
-                guard.style.cssText = 'position:fixed;inset:0;z-index:9999;display:none;align-items:center;justify-content:center;background:var(--bg-primary, #000);color:var(--text, #fff);text-align:center;padding:24px;font-size:18px;line-height:1.5;';
-                guard.innerHTML = `<div><div style="font-size:28px;margin-bottom:8px;">${this.t('orientation.title')}</div><div>${this.t('orientation.message')}</div></div>`;
-                document.body.appendChild(guard);
-            }
-            const isLandscape = window.innerWidth > window.innerHeight;
-            guard.style.display = isLandscape ? 'flex' : 'none';
-        };
-        this._updateOrientationGuard = ensure;
-        window.addEventListener('resize', ensure);
-        window.addEventListener('orientationchange', ensure);
-        ensure();
     },
     setupClickSounds() {
         const confirmIds = new Set([
@@ -890,7 +847,16 @@ const UI = {
         return `
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z"/>
-                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06A2 2 0 1 1 4.21 17l.06-.06A1.65 1.65 0 0 0 4.6 15 1.65 1.65 0 0 0 3.09 14H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06A2 2 0 1 1 7.04 4.3l.06.06A1.65 1.65 0 0 0 8.92 4.6 1.65 1.65 0 0 0 10 3.09V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1.08 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06A2 2 0 1 1 21 7.04l-.06.06A1.65 1.65 0 0 0 20.4 9c.65.29 1.11.93 1.18 1.67H21a2 2 0 1 1 0 4h-.09c-.27.31-.65.27-1.51.33z"/>
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06A2 2 0 1 1 4.21 17l.06-.06A1.65 1.65 0 0 0 4.6 15 1.65 1.65 0 0 0 3.09 14H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06A2 2 0 1 1 7.04 4.3l.06.06A1.65 1.65 0 0 0 8.92 4.6 1.65 1.65 0  0 0 10 3.09V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1.08 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06A2 2 0  1 1 21 7.04l-.06.06A1.65 1.65 0 0 0 20.4 9c.65.29 1.11.93 1.18 1.67H21a2 2 0 1 1 0 4h-.09c-.27.31-.65.27-1.51.33z"/>
+            </svg>
+        `;
+    },
+    getHelpIcon() {
+        return `
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"/>
+                <path d="M9 9a3 3 0 1 1 6 1c0 2-3 2-3 4" stroke-linecap="round"/>
+                <circle cx="12" cy="17" r="1.8" fill="currentColor" stroke="none"/>
             </svg>
         `;
     },
@@ -904,20 +870,17 @@ const UI = {
         if (startBtn) startBtn.disabled = true;
         // Show initial value and play first click immediately on press
         if (display) display.textContent = remaining.toString();
-        this._voiceDuck();
         await Utils.beep(880, 120);
         // Every second: decrement, update, click, or finish
         AppState.countdownIntervalId = setInterval(async () => {
             remaining -= 1;
             if (remaining > 0) {
                 if (display) display.textContent = remaining.toString();
-                this._voiceDuck();
                 await Utils.beep(880, 120);
             } else {
                 clearInterval(AppState.countdownIntervalId);
                 AppState.countdownIntervalId = null;
                 // Play final tone and start immediately with no delay
-                this._voiceDuck();
                 Utils.beep(1200, 220, 0.2);
                 AppState.countdownActive = false;
                 AppState.countdownSeconds = null;
@@ -1040,21 +1003,20 @@ const UI = {
         return /iPad|iPhone|iPod/.test(ua) && !window.MSStream;
     },
     _voicePlay(name) {
-        // On iOS while mic is active, audio playback may be suppressed.
-        // Briefly stop recognition to allow the sound to play, then auto-restart via onend handler.
-        const rec = AppState.voice && AppState.voice.recognizer;
-        if (this._isIOS() && AppState.voice && AppState.voice.recognizing && rec) {
-            try { rec.stop(); } catch(_) {}
-            setTimeout(() => { Sound.play(name); }, 80);
-        } else {
-            Sound.play(name);
-        }
+        // Do not stop recognition; play using WebAudio/HTMLAudio fallback
+        Sound.play(name);
     },
-    _voiceDuck() {
-        const rec = AppState.voice && AppState.voice.recognizer;
-        if (this._isIOS() && AppState.voice && AppState.voice.recognizing && rec) {
-            try { rec.stop(); } catch(_) {}
-        }
+    _restartRecognitionSoon() {
+        if (!AppState.voice || !AppState.voice.enabled) return;
+        if (!this._isIOS()) return; // primarily needed on iOS
+        const rec = AppState.voice.recognizer;
+        if (!rec) return;
+        try {
+            setTimeout(() => {
+                try { rec.abort && rec.abort(); } catch(_) {}
+                try { rec.start(); AppState.voice.recognizing = true; } catch(_) {}
+            }, 200);
+        } catch (_) {}
     },
     _tryExecuteVoiceFromTranscript(text, isFinal) {
         const now = Date.now();
@@ -1086,13 +1048,14 @@ const UI = {
                 }
             }
             this._voiceLastExecAt = now;
+            this._restartRecognitionSoon();
             return true;
         }
-        if (cmd === 'next') { if (AppState.stopwatch.isRunning && !AppState.stopwatch.isPaused) { this._voicePlay('lap'); StopwatchManager.recordLap(); } this._voiceLastExecAt = now; return true; }
-        if (cmd === 'pause') { if (AppState.stopwatch.isRunning && !AppState.stopwatch.isPaused) { this._voicePlay('pause'); StopwatchManager.pause(); this.renderStopwatch(); } this._voiceLastExecAt = now; return true; }
-        if (cmd === 'resume') { if (AppState.stopwatch.isPaused) { this._voicePlay('resume'); StopwatchManager.resume(); this.renderStopwatch(); } this._voiceLastExecAt = now; return true; }
-        if (cmd === 'stop') { this._voicePlay('stop'); StopwatchManager.stop(); this._voiceLastExecAt = now; return true; }
-        if (cmd === 'reset') { this._voicePlay('reset'); StopwatchManager.reset(true); this._voiceLastExecAt = now; return true; }
+        if (cmd === 'next') { if (AppState.stopwatch.isRunning && !AppState.stopwatch.isPaused) { this._voicePlay('lap'); StopwatchManager.recordLap(); } this._voiceLastExecAt = now; this._restartRecognitionSoon(); return true; }
+        if (cmd === 'pause') { if (AppState.stopwatch.isRunning && !AppState.stopwatch.isPaused) { this._voicePlay('pause'); StopwatchManager.pause(); this.renderStopwatch(); } this._voiceLastExecAt = now; this._restartRecognitionSoon(); return true; }
+        if (cmd === 'resume') { if (AppState.stopwatch.isPaused) { this._voicePlay('resume'); StopwatchManager.resume(); this.renderStopwatch(); } this._voiceLastExecAt = now; this._restartRecognitionSoon(); return true; }
+        if (cmd === 'stop') { this._voicePlay('stop'); StopwatchManager.stop(); this._voiceLastExecAt = now; this._restartRecognitionSoon(); return true; }
+        if (cmd === 'reset') { this._voicePlay('reset'); StopwatchManager.reset(true); this._voiceLastExecAt = now; this._restartRecognitionSoon(); return true; }
         return false;
     },
 
@@ -1438,9 +1401,7 @@ const UI = {
         this.app.innerHTML = `
             <header id="header">
                 <div style="display:flex;gap:8px;align-items:center;">
-                    <button id="helpBtn" class="icon-btn" title="${this.t('help.title')}">
-                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 115.82 1c0 2-3 2-3 4"/><line x1="12" y1="17" x2="12" y2="17"/></svg>
-                    </button>
+                    <button id="helpBtn" class="icon-btn" title="${this.t('help.title')}">${this.getHelpIcon()}</button>
                     <button id="newFolderBtn" class="icon-btn" title="${this.t('tooltip.newProject')}">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/>
@@ -1508,9 +1469,7 @@ const UI = {
         
         this.app.innerHTML = `
             <header>
-                <button id="helpBtn" class="icon-btn" title="${this.t('help.title')}">
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 115.82 1c0 2-3 2-3 4"/><line x1="12" y1="17" x2="12" y2="17"/></svg>
-                </button>
+                <button id="helpBtn" class="icon-btn" title="${this.t('help.title')}">${this.getHelpIcon()}</button>
                 <button id="backBtn" class="icon-btn">
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M19 12H5M12 19l-7-7 7-7"/>
@@ -1769,6 +1728,34 @@ const UI = {
             modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
         }
         return modal;
+    },
+
+    showHelpDialog() {
+        const content = `
+            <div class="help-body">
+                <p><strong>${this.t('help.whatTitle')}</strong><br>${this.t('help.whatText')}</p>
+                <hr>
+                <p><strong>${this.t('help.controlsTitle')}</strong><br>${this.t('help.controlsText')}</p>
+                <ul>
+                    <li>${this.t('help.ctrlStart')}</li>
+                    <li>${this.t('help.ctrlNext')}</li>
+                    <li>${this.t('help.ctrlPause')}</li>
+                    <li>${this.t('help.ctrlResume')}</li>
+                    <li>${this.t('help.ctrlStop')}</li>
+                    <li>${this.t('help.ctrlReset')}</li>
+                </ul>
+                <p><strong>${this.t('help.countdownTitle')}</strong><br>${this.t('help.countdownText')}</p>
+                <p><strong>${this.t('help.voiceTitle')}</strong><br>${this.t('help.voiceText')}</p>
+                <p><strong>${this.t('help.soundsTitle')}</strong><br>${this.t('help.soundsText')}</p>
+                <p><strong>${this.t('help.saveTitle')}</strong><br>${this.t('help.saveText')}</p>
+                <p><strong>${this.t('help.tipsTitle')}</strong><br>${this.t('help.tipsText')}</p>
+            </div>`;
+        const modal = this.createModal(this.t('help.title'), content);
+        const btn = document.createElement('div');
+        btn.style.textAlign = 'right';
+        btn.innerHTML = `<button class="btn btn-primary" id="closeHelpBtn">${this.t('action.close')}</button>`;
+        modal.querySelector('.modal-content').appendChild(btn);
+        modal.querySelector('#closeHelpBtn').addEventListener('click', ()=> modal.remove());
     },
     
     showReOrContinuePrompt() {
