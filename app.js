@@ -405,11 +405,28 @@ const Sound = {
                         Utils._audioCtx.resume().catch(()=>{});
                     }
                 }
+                // Play a 1-frame silent buffer to fully unlock WebAudio on iOS
+                if (this._ctx) {
+                    const silent = this._ctx.createBuffer(1, 1, 22050);
+                    const src = this._ctx.createBufferSource();
+                    src.buffer = silent;
+                    src.connect(this._ctx.destination);
+                    try { src.start(0); } catch {}
+                }
             } catch {}
         };
+        window.addEventListener('pointerdown', unlock, { once: true, passive: true });
+        window.addEventListener('pointerup', unlock, { once: true, passive: true });
         window.addEventListener('touchstart', unlock, { once: true, passive: true });
+        window.addEventListener('touchend', unlock, { once: true, passive: true });
         window.addEventListener('click', unlock, { once: true });
         this.initialized = true;
+    },
+    ensureResumed() {
+        try {
+            if (this._ctx && this._ctx.state === 'suspended') this._ctx.resume().catch(()=>{});
+            if (Utils._audioCtx && Utils._audioCtx.state === 'suspended') Utils._audioCtx.resume().catch(()=>{});
+        } catch {}
     },
     forceUnlock() {
         // More aggressive unlock for iOS Safari
@@ -441,14 +458,16 @@ const Sound = {
         const base = this.clips[name];
         if (!base) return;
         try {
-            if (this._ctx && this.buffers[name]) {
+            this.ensureResumed();
+            if (this._ctx && this._ctx.state === 'running' && this.buffers[name]) {
                 const src = this._ctx.createBufferSource();
                 src.buffer = this.buffers[name];
                 src.connect(this._ctx.destination);
                 src.start(0);
             } else {
-                // clone to allow overlaps and avoid cutting off
+                // Fallback to HTMLAudio if WebAudio unavailable or suspended
                 const a = base.cloneNode(true);
+                a.currentTime = 0;
                 a.play().catch(()=>{});
             }
         } catch {}
