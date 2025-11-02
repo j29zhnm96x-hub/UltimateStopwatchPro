@@ -826,6 +826,101 @@ const UI = {
         setTimeout(()=>{ input && input.select && input.select(); }, 10);
     },
 
+    // Voice control methods (UI scope)
+    toggleVoiceControl() {
+        if (!this._canUseSpeech()) {
+            alert(this.t('error.voiceUnsupported'));
+            return;
+        }
+        AppState.voice.enabled = !AppState.voice.enabled;
+        if (AppState.voice.enabled) {
+            this._startVoiceRecognition();
+        } else {
+            this._stopVoiceRecognition();
+        }
+        this.renderStopwatch();
+    },
+    _canUseSpeech() {
+        return typeof window !== 'undefined' && (window.SpeechRecognition || window.webkitSpeechRecognition);
+    },
+    _getRecognizer() {
+        if (!this._canUseSpeech()) return null;
+        if (AppState.voice.recognizer) return AppState.voice.recognizer;
+        const Ctor = window.SpeechRecognition || window.webkitSpeechRecognition;
+        const rec = new Ctor();
+        rec.lang = AppState.voice.lang || (AppState.lang === 'hr' ? 'hr-HR' : 'en-US');
+        rec.continuous = true;
+        rec.interimResults = false;
+        rec.maxAlternatives = 3;
+        rec.onresult = (event) => {
+            const last = event.results[event.results.length - 1];
+            const transcript = (last[0] && last[0].transcript) ? last[0].transcript.toLowerCase().trim() : '';
+            if (transcript) this._handleVoiceCommand(transcript);
+        };
+        rec.onend = () => {
+            AppState.voice.recognizing = false;
+            if (AppState.voice.enabled) {
+                setTimeout(() => { try { rec.start(); AppState.voice.recognizing = true; } catch(_){} }, 300);
+            }
+        };
+        rec.onerror = () => {
+            AppState.voice.recognizing = false;
+            if (AppState.voice.enabled) {
+                setTimeout(() => { try { rec.start(); AppState.voice.recognizing = true; } catch(_){} }, 800);
+            }
+        };
+        AppState.voice.recognizer = rec;
+        return rec;
+    },
+    _startVoiceRecognition() {
+        const rec = this._getRecognizer();
+        if (!rec) return;
+        try {
+            rec.start();
+            AppState.voice.recognizing = true;
+        } catch (_) { /* ignore */ }
+    },
+    _stopVoiceRecognition() {
+        const rec = AppState.voice.recognizer;
+        if (!rec) return;
+        try { rec.onend = null; rec.stop(); } catch(_) {}
+        AppState.voice.recognizing = false;
+    },
+    _handleVoiceCommand(text) {
+        const t = (text || '').toLowerCase();
+        const has = (...words) => words.some(w => t.includes(w));
+        let cmd = null;
+        if (has('start','go','begin','pokreni','kreni')) cmd = 'start';
+        else if (has('next','lap','sljede','krug')) cmd = 'next';
+        else if (has('pause','pauza')) cmd = 'pause';
+        else if (has('resume','continue','nastavi')) cmd = 'resume';
+        else if (has('stop','zaustavi','stani')) cmd = 'stop';
+        else if (has('reset','restart','resetiraj')) cmd = 'reset';
+        if (!cmd) return;
+
+        if (cmd === 'start') {
+            if (AppState.resultChoiceTargetId && !AppState.remeasureResultId && !AppState.continueResultId) {
+                this.showReOrContinuePrompt();
+                return;
+            }
+            if (!AppState.stopwatch.isRunning && !AppState.stopwatch.isPaused) {
+                if (AppState.countdownSeconds && !AppState.countdownActive) {
+                    this.startCountdown(AppState.countdownSeconds);
+                } else {
+                    Sound.play('start');
+                    StopwatchManager.start();
+                    this.renderStopwatch();
+                }
+            }
+            return;
+        }
+        if (cmd === 'next') { if (AppState.stopwatch.isRunning && !AppState.stopwatch.isPaused) { Sound.play('lap'); StopwatchManager.recordLap(); } return; }
+        if (cmd === 'pause') { if (AppState.stopwatch.isRunning && !AppState.stopwatch.isPaused) { Sound.play('pause'); StopwatchManager.pause(); this.renderStopwatch(); } return; }
+        if (cmd === 'resume') { if (AppState.stopwatch.isPaused) { Sound.play('resume'); StopwatchManager.resume(); this.renderStopwatch(); } return; }
+        if (cmd === 'stop') { Sound.play('stop'); StopwatchManager.stop(); return; }
+        if (cmd === 'reset') { Sound.play('reset'); StopwatchManager.reset(true); return; }
+    },
+
     updateThemeToggleIcon() {
         const btn = this.app && this.app.querySelector ? this.app.querySelector('#themeToggle') : null;
         if (btn) {
