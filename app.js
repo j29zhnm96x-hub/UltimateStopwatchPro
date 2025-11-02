@@ -1017,6 +1017,7 @@ const UI = {
     _lastVoiceCmd: null,
     _lastVoiceAt: 0,
     _lastVoiceTextNorm: '',
+    _lastExecWasInterim: false,
     _getRecognizer() {
         if (!this._canUseSpeech()) return null;
         if (AppState.voice.recognizer) return AppState.voice.recognizer;
@@ -1141,6 +1142,11 @@ const UI = {
             try { console.debug('[voice][suppress][echo]', { tn, lastTn: this._lastVoiceTextNorm, delta: now - this._lastVoiceAt }); } catch {}
             return false;
         }
+        // If a final result repeats shortly after an interim-triggered execution, ignore (same utterance duplication)
+        if (isFinal && this._lastExecWasInterim && cmd === this._lastVoiceCmd && (now - this._lastVoiceAt) < 4500) {
+            try { console.debug('[voice][suppress][final-dup]', { cmd, delta: now - this._lastVoiceAt }); } catch {}
+            return false;
+        }
 
         if (cmd === 'start') {
             this._voiceCommandActive = true;
@@ -1163,6 +1169,7 @@ const UI = {
             this._lastVoiceCmd = cmd;
             this._lastVoiceAt = now;
             this._lastVoiceTextNorm = tn;
+            this._lastExecWasInterim = !isFinal;
             try { console.debug('[voice][exec]', { cmd, now }); } catch {}
             setTimeout(() => { this._voiceCommandActive = false; }, 100);
             this._restartRecognitionSoon();
@@ -1179,15 +1186,16 @@ const UI = {
             this._lastVoiceCmd = cmd;
             this._lastVoiceAt = now;
             this._lastVoiceTextNorm = tn;
+            this._lastExecWasInterim = !isFinal;
             try { console.debug('[voice][exec]', { cmd, now }); } catch {}
             setTimeout(() => { this._voiceCommandActive = false; }, 100);
             this._restartRecognitionSoon();
             return true;
         }
-        if (cmd === 'pause') { this._voiceCommandActive = true; if (AppState.stopwatch.isRunning && !AppState.stopwatch.isPaused) { this._voicePlay('pause'); StopwatchManager.pause(); this.renderStopwatch(); } this._voiceLastExecAt = now; this._lastVoiceCmd = cmd; this._lastVoiceAt = now; this._lastVoiceTextNorm = tn; try { console.debug('[voice][exec]', { cmd, now }); } catch {} setTimeout(() => { this._voiceCommandActive = false; }, 100); this._restartRecognitionSoon(); return true; }
-        if (cmd === 'resume') { this._voiceCommandActive = true; if (AppState.stopwatch.isPaused) { this._voicePlay('resume'); StopwatchManager.resume(); this.renderStopwatch(); } this._voiceLastExecAt = now; this._lastVoiceCmd = cmd; this._lastVoiceAt = now; this._lastVoiceTextNorm = tn; try { console.debug('[voice][exec]', { cmd, now }); } catch {} setTimeout(() => { this._voiceCommandActive = false; }, 100); this._restartRecognitionSoon(); return true; }
-        if (cmd === 'stop') { this._voiceCommandActive = true; this._voicePlay('stop'); StopwatchManager.stop(); this._voiceLastExecAt = now; this._lastVoiceCmd = cmd; this._lastVoiceAt = now; this._lastVoiceTextNorm = tn; try { console.debug('[voice][exec]', { cmd, now }); } catch {} setTimeout(() => { this._voiceCommandActive = false; }, 100); /* disable listening after stop */ AppState.voice.enabled = false; this._stopVoiceRecognition(); this.renderStopwatch(); return true; }
-        if (cmd === 'reset') { this._voiceCommandActive = true; this._voicePlay('reset'); StopwatchManager.reset(true); this._voiceLastExecAt = now; this._lastVoiceCmd = cmd; this._lastVoiceAt = now; this._lastVoiceTextNorm = tn; try { console.debug('[voice][exec]', { cmd, now }); } catch {} setTimeout(() => { this._voiceCommandActive = false; }, 100); this._restartRecognitionSoon(); return true; }
+        if (cmd === 'pause') { this._voiceCommandActive = true; if (AppState.stopwatch.isRunning && !AppState.stopwatch.isPaused) { this._voicePlay('pause'); StopwatchManager.pause(); this.renderStopwatch(); } this._voiceLastExecAt = now; this._lastVoiceCmd = cmd; this._lastVoiceAt = now; this._lastVoiceTextNorm = tn; this._lastExecWasInterim = !isFinal; try { console.debug('[voice][exec]', { cmd, now }); } catch {} setTimeout(() => { this._voiceCommandActive = false; }, 100); this._restartRecognitionSoon(); return true; }
+        if (cmd === 'resume') { this._voiceCommandActive = true; if (AppState.stopwatch.isPaused) { this._voicePlay('resume'); StopwatchManager.resume(); this.renderStopwatch(); } this._voiceLastExecAt = now; this._lastVoiceCmd = cmd; this._lastVoiceAt = now; this._lastVoiceTextNorm = tn; this._lastExecWasInterim = !isFinal; try { console.debug('[voice][exec]', { cmd, now }); } catch {} setTimeout(() => { this._voiceCommandActive = false; }, 100); this._restartRecognitionSoon(); return true; }
+        if (cmd === 'stop') { this._voiceCommandActive = true; this._voicePlay('stop'); StopwatchManager.stop(); this._voiceLastExecAt = now; this._lastVoiceCmd = cmd; this._lastVoiceAt = now; this._lastVoiceTextNorm = tn; this._lastExecWasInterim = !isFinal; try { console.debug('[voice][exec]', { cmd, now }); } catch {} setTimeout(() => { this._voiceCommandActive = false; }, 100); /* disable listening after stop */ AppState.voice.enabled = false; this._stopVoiceRecognition(); this.renderStopwatch(); return true; }
+        if (cmd === 'reset') { this._voiceCommandActive = true; this._voicePlay('reset'); StopwatchManager.reset(true); this._voiceLastExecAt = now; this._lastVoiceCmd = cmd; this._lastVoiceAt = now; this._lastVoiceTextNorm = tn; this._lastExecWasInterim = !isFinal; try { console.debug('[voice][exec]', { cmd, now }); } catch {} setTimeout(() => { this._voiceCommandActive = false; }, 100); this._restartRecognitionSoon(); return true; }
         return false;
     },
 
