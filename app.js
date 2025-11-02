@@ -20,25 +20,6 @@ const AppState = {
         timeMode: localStorage.getItem('as_timeMode') || 'hms',
         showHundredths: JSON.parse(localStorage.getItem('as_showHundredths') || 'true')
     },
-    setupClickSounds() {
-        const confirmIds = new Set([
-            'applyCountdownBtn','applyChoiceBtn','closeSettingsBtn','cancelChoiceBtn','cancelBtn','cancelSaveBtn',
-            'applyThemeBtn','calcQuantityBtn','calcTimeBtn','calcPriceBtn','saveResultForm','newFolderForm'
-        ]);
-        document.addEventListener('pointerdown', (e) => {
-            const target = e.target;
-            const controlHit = target.closest('#startBtn, #resumeBtn, #pauseBtn, #stopBtn, #lapBtn, #resetBtn');
-            if (controlHit) return; // handled elsewhere with specific sounds
-            const el = target.closest('button, .menu-item, .palette-card');
-            if (!el) return;
-            const txt = (el.textContent || '').trim().toLowerCase();
-            const isStrongBtn = el.classList && (el.classList.contains('btn-primary') || el.classList.contains('btn-success'));
-            const hasConfirmId = el.id && confirmIds.has(el.id);
-            const confirmWords = /(apply|save|update|create|proceed|ok|yes|done|close)/;
-            const isConfirm = isStrongBtn || hasConfirmId || confirmWords.test(txt);
-            Sound.play(isConfirm ? 'confirm' : 'ui');
-        }, true);
-    },
     // Countdown-to-start (ephemeral)
     countdownSeconds: null,
     countdownIntervalId: null,
@@ -657,6 +638,25 @@ const UI = {
         }
         this.applyLanguage();
         this.renderHome();
+    },
+    setupClickSounds() {
+        const confirmIds = new Set([
+            'applyCountdownBtn','applyChoiceBtn','closeSettingsBtn','cancelChoiceBtn','cancelBtn','cancelSaveBtn',
+            'applyThemeBtn','calcQuantityBtn','calcTimeBtn','calcPriceBtn','saveResultForm','newFolderForm'
+        ]);
+        document.addEventListener('pointerdown', (e) => {
+            const target = e.target;
+            const controlHit = target.closest('#startBtn, #resumeBtn, #pauseBtn, #stopBtn, #lapBtn, #resetBtn');
+            if (controlHit) return; // handled elsewhere
+            const el = target.closest('button, .menu-item, .palette-card');
+            if (!el) return;
+            const txt = (el.textContent || '').trim().toLowerCase();
+            const isStrongBtn = el.classList && (el.classList.contains('btn-primary') || el.classList.contains('btn-success'));
+            const hasConfirmId = el.id && confirmIds.has(el.id);
+            const confirmWords = /(apply|save|update|create|proceed|ok|yes|done|close)/;
+            const isConfirm = isStrongBtn || hasConfirmId || confirmWords.test(txt);
+            Sound.play(isConfirm ? 'confirm' : 'ui');
+        }, true);
     },
     
     // i18n helpers
