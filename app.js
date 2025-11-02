@@ -20,6 +20,34 @@ const AppState = {
         timeMode: localStorage.getItem('as_timeMode') || 'hms',
         showHundredths: JSON.parse(localStorage.getItem('as_showHundredths') || 'true')
     },
+
+    showHelpDialog() {
+        const content = `
+            <div class="help-body">
+                <p><strong>${this.t('help.whatTitle')}</strong><br>${this.t('help.whatText')}</p>
+                <hr>
+                <p><strong>${this.t('help.controlsTitle')}</strong><br>${this.t('help.controlsText')}</p>
+                <ul>
+                    <li>${this.t('help.ctrlStart')}</li>
+                    <li>${this.t('help.ctrlNext')}</li>
+                    <li>${this.t('help.ctrlPause')}</li>
+                    <li>${this.t('help.ctrlResume')}</li>
+                    <li>${this.t('help.ctrlStop')}</li>
+                    <li>${this.t('help.ctrlReset')}</li>
+                </ul>
+                <p><strong>${this.t('help.countdownTitle')}</strong><br>${this.t('help.countdownText')}</p>
+                <p><strong>${this.t('help.voiceTitle')}</strong><br>${this.t('help.voiceText')}</p>
+                <p><strong>${this.t('help.soundsTitle')}</strong><br>${this.t('help.soundsText')}</p>
+                <p><strong>${this.t('help.saveTitle')}</strong><br>${this.t('help.saveText')}</p>
+                <p><strong>${this.t('help.tipsTitle')}</strong><br>${this.t('help.tipsText')}</p>
+            </div>`;
+        const modal = this.createModal(this.t('help.title'), content);
+        const btn = document.createElement('div');
+        btn.style.textAlign = 'right';
+        btn.innerHTML = `<button class="btn btn-primary" id="closeHelpBtn">${this.t('action.close')}</button>`;
+        modal.querySelector('.modal-content').appendChild(btn);
+        modal.querySelector('#closeHelpBtn').addEventListener('click', ()=> modal.remove());
+    },
     // Countdown-to-start (ephemeral)
     countdownSeconds: null,
     countdownIntervalId: null,
@@ -380,8 +408,8 @@ const Sound = {
             a.load();
             this.clips[k] = a;
         }
-        // Preload small UI sounds into WebAudio for ultra low latency (fallback to HTMLAudio if decode fails)
-        ['ui','confirm'].forEach(k => this._preloadBuffer(k, this.files[k]));
+        // Preload all sounds into WebAudio for ultra low latency (fallback to HTMLAudio if decode fails)
+        Object.keys(this.files).forEach(k => this._preloadBuffer(k, this.files[k]));
         // Unlock on first gesture (iOS)
         const unlock = () => {
             try {
@@ -532,6 +560,29 @@ const Locales = {
         'tooltip.countdown': 'Countdown to start',
         'tooltip.voice': 'Voice control',
         'error.voiceUnsupported': 'Voice control is not supported on this browser.',
+        'help.title': 'About & Help',
+        'help.whatTitle': 'What is this app?',
+        'help.whatText': 'Ultimate Stopwatch helps you time activities with laps, countdown-to-start, voice commands, and project saving.',
+        'help.controlsTitle': 'Core Controls',
+        'help.controlsText': 'Use the Start, Next (Lap), Pause, Resume, Stop, and Reset buttons to control the stopwatch. Keyboard: Enter (Start/Pause/Resume), Space (Lap).',
+        'help.ctrlStart': 'Start: Begins timing. If countdown is set, it will count down first.',
+        'help.ctrlNext': 'Next (Lap): Records a lap without stopping the timer.',
+        'help.ctrlPause': 'Pause: Pauses the stopwatch.',
+        'help.ctrlResume': 'Resume: Continues timing after a pause.',
+        'help.ctrlStop': 'Stop: Stops timing. You can save the result.',
+        'help.ctrlReset': 'Reset: Resets the stopwatch to zero (after Stop).',
+        'help.countdownTitle': 'Countdown to Start',
+        'help.countdownText': 'Tap the timer icon to set 1–10 seconds. Press Start to hear beeps during countdown; at 0 the stopwatch starts.',
+        'help.voiceTitle': 'Voice Control',
+        'help.voiceText': 'Enable the mic button to say: “start, next, pause, resume, stop, reset” (also supports Croatian equivalents).',
+        'help.soundsTitle': 'Sounds',
+        'help.soundsText': 'UI clicks and stopwatch actions have distinct sounds. On iOS, ensure volume is up and Silent Mode is off.',
+        'help.saveTitle': 'Saving Results',
+        'help.saveText': 'Save sessions into projects, view details, and calculate metrics later.',
+        'help.tipsTitle': 'Tips',
+        'help.tipsText': 'Add to Home Screen for a full-screen experience. Keep the screen awake in settings when charging.',
+        'orientation.title': 'Rotate your device',
+        'orientation.message': 'This app works in portrait mode only. Please rotate your device back to portrait.',
         'countdown.title': 'Countdown',
         'countdown.secondsLabel': 'Seconds (1–10)',
         'error.wakeLockUnsupported': 'Screen Wake Lock is not supported on this browser.',
@@ -639,6 +690,29 @@ const Locales = {
         'tooltip.countdown': 'Odbrojavanje prije starta',
         'tooltip.voice': 'Glasovno upravljanje',
         'error.voiceUnsupported': 'Glasovno upravljanje nije podržano u ovom pregledniku.',
+        'help.title': 'O aplikaciji i pomoć',
+        'help.whatTitle': 'Što je ova aplikacija?',
+        'help.whatText': 'Ultimate Stopwatch pomaže mjeriti vrijeme s krugovima, odbrojavanjem, glasovnim naredbama i spremanjem projekata.',
+        'help.controlsTitle': 'Osnovne kontrole',
+        'help.controlsText': 'Koristite Start, Next (Krug), Pause, Resume, Stop i Reset. Tipkovnica: Enter (Start/Pauza/Nastavi), Space (Krug).',
+        'help.ctrlStart': 'Start: Pokreće mjerenje. Ako je postavljeno odbrojavanje, prvo će odbrojati.',
+        'help.ctrlNext': 'Next (Krug): Sprema krug bez zaustavljanja mjerenja.',
+        'help.ctrlPause': 'Pause: Pauzira štopericu.',
+        'help.ctrlResume': 'Resume: Nastavlja nakon pauze.',
+        'help.ctrlStop': 'Stop: Zaustavlja mjerenje. Možete spremiti rezultat.',
+        'help.ctrlReset': 'Reset: Vraća štopericu na nulu (nakon Stop).',
+        'help.countdownTitle': 'Odbrojavanje prije starta',
+        'help.countdownText': 'Dodirnite ikonu tajmera za 1–10 sekundi. Pritisnite Start kako biste čuli beepove; na 0 štoperica kreće.',
+        'help.voiceTitle': 'Glasovno upravljanje',
+        'help.voiceText': 'Uključite mikrofon i recite: “start, next, pause, resume, stop, reset” (podržane su i hrvatske riječi).',
+        'help.soundsTitle': 'Zvukovi',
+        'help.soundsText': 'UI klikovi i radnje štoperice imaju različite zvukove. Na iOS-u provjerite glasnoću i isključen Tihi način.',
+        'help.saveTitle': 'Spremanje rezultata',
+        'help.saveText': 'Spremite mjerenja u projekte, pregledajte detalje i naknadno izračunajte metrike.',
+        'help.tipsTitle': 'Savjeti',
+        'help.tipsText': 'Dodajte na početni zaslon za cijeli ekran. U postavkama zadržite ekran budnim dok se puni.',
+        'orientation.title': 'Okrenite uređaj',
+        'orientation.message': 'Aplikacija radi samo u vertikalnom prikazu. Vratite uređaj u portret.',
         'countdown.title': 'Odbrojavanje',
         'countdown.secondsLabel': 'Sekunde (1–10)',
         'error.wakeLockUnsupported': 'Zadržavanje zaslona nije podržano u ovom pregledniku.',
@@ -670,6 +744,7 @@ const UI = {
         this.setupEventListeners();
         this.setupGlobalInputHandlers();
         this.setupKeyboardShortcuts();
+        this.setupOrientationGuard();
         AppState.updateKeepAwakeBinding && AppState.updateKeepAwakeBinding();
         // iOS Safari fallback requires a user gesture to enable NoSleep video
         if (AppState.keepAwakeOnCharge) {
@@ -681,6 +756,24 @@ const UI = {
         }
         this.applyLanguage();
         this.renderHome();
+    },
+    setupOrientationGuard() {
+        const ensure = () => {
+            let guard = document.getElementById('orientationGuard');
+            if (!guard) {
+                guard = document.createElement('div');
+                guard.id = 'orientationGuard';
+                guard.style.cssText = 'position:fixed;inset:0;z-index:9999;display:none;align-items:center;justify-content:center;background:var(--bg-primary, #000);color:var(--text, #fff);text-align:center;padding:24px;font-size:18px;line-height:1.5;';
+                guard.innerHTML = `<div><div style="font-size:28px;margin-bottom:8px;">${this.t('orientation.title')}</div><div>${this.t('orientation.message')}</div></div>`;
+                document.body.appendChild(guard);
+            }
+            const isLandscape = window.innerWidth > window.innerHeight;
+            guard.style.display = isLandscape ? 'flex' : 'none';
+        };
+        this._updateOrientationGuard = ensure;
+        window.addEventListener('resize', ensure);
+        window.addEventListener('orientationchange', ensure);
+        ensure();
     },
     setupClickSounds() {
         const confirmIds = new Set([
@@ -811,17 +904,20 @@ const UI = {
         if (startBtn) startBtn.disabled = true;
         // Show initial value and play first click immediately on press
         if (display) display.textContent = remaining.toString();
+        this._voiceDuck();
         await Utils.beep(880, 120);
         // Every second: decrement, update, click, or finish
         AppState.countdownIntervalId = setInterval(async () => {
             remaining -= 1;
             if (remaining > 0) {
                 if (display) display.textContent = remaining.toString();
+                this._voiceDuck();
                 await Utils.beep(880, 120);
             } else {
                 clearInterval(AppState.countdownIntervalId);
                 AppState.countdownIntervalId = null;
                 // Play final tone and start immediately with no delay
+                this._voiceDuck();
                 Utils.beep(1200, 220, 0.2);
                 AppState.countdownActive = false;
                 AppState.countdownSeconds = null;
@@ -938,6 +1034,28 @@ const UI = {
         try { rec.onend = null; rec.stop(); } catch(_) {}
         AppState.voice.recognizing = false;
     },
+    _isIOS() {
+        if (typeof navigator === 'undefined') return false;
+        const ua = navigator.userAgent || navigator.vendor || '';
+        return /iPad|iPhone|iPod/.test(ua) && !window.MSStream;
+    },
+    _voicePlay(name) {
+        // On iOS while mic is active, audio playback may be suppressed.
+        // Briefly stop recognition to allow the sound to play, then auto-restart via onend handler.
+        const rec = AppState.voice && AppState.voice.recognizer;
+        if (this._isIOS() && AppState.voice && AppState.voice.recognizing && rec) {
+            try { rec.stop(); } catch(_) {}
+            setTimeout(() => { Sound.play(name); }, 80);
+        } else {
+            Sound.play(name);
+        }
+    },
+    _voiceDuck() {
+        const rec = AppState.voice && AppState.voice.recognizer;
+        if (this._isIOS() && AppState.voice && AppState.voice.recognizing && rec) {
+            try { rec.stop(); } catch(_) {}
+        }
+    },
     _tryExecuteVoiceFromTranscript(text, isFinal) {
         const now = Date.now();
         if (now - this._voiceLastExecAt < this._voiceCooldownMs) return false;
@@ -962,7 +1080,7 @@ const UI = {
                 if (AppState.countdownSeconds && !AppState.countdownActive) {
                     this.startCountdown(AppState.countdownSeconds);
                 } else {
-                    Sound.play('start');
+                    this._voicePlay('start');
                     StopwatchManager.start();
                     this.renderStopwatch();
                 }
@@ -970,11 +1088,11 @@ const UI = {
             this._voiceLastExecAt = now;
             return true;
         }
-        if (cmd === 'next') { if (AppState.stopwatch.isRunning && !AppState.stopwatch.isPaused) { Sound.play('lap'); StopwatchManager.recordLap(); } this._voiceLastExecAt = now; return true; }
-        if (cmd === 'pause') { if (AppState.stopwatch.isRunning && !AppState.stopwatch.isPaused) { Sound.play('pause'); StopwatchManager.pause(); this.renderStopwatch(); } this._voiceLastExecAt = now; return true; }
-        if (cmd === 'resume') { if (AppState.stopwatch.isPaused) { Sound.play('resume'); StopwatchManager.resume(); this.renderStopwatch(); } this._voiceLastExecAt = now; return true; }
-        if (cmd === 'stop') { Sound.play('stop'); StopwatchManager.stop(); this._voiceLastExecAt = now; return true; }
-        if (cmd === 'reset') { Sound.play('reset'); StopwatchManager.reset(true); this._voiceLastExecAt = now; return true; }
+        if (cmd === 'next') { if (AppState.stopwatch.isRunning && !AppState.stopwatch.isPaused) { this._voicePlay('lap'); StopwatchManager.recordLap(); } this._voiceLastExecAt = now; return true; }
+        if (cmd === 'pause') { if (AppState.stopwatch.isRunning && !AppState.stopwatch.isPaused) { this._voicePlay('pause'); StopwatchManager.pause(); this.renderStopwatch(); } this._voiceLastExecAt = now; return true; }
+        if (cmd === 'resume') { if (AppState.stopwatch.isPaused) { this._voicePlay('resume'); StopwatchManager.resume(); this.renderStopwatch(); } this._voiceLastExecAt = now; return true; }
+        if (cmd === 'stop') { this._voicePlay('stop'); StopwatchManager.stop(); this._voiceLastExecAt = now; return true; }
+        if (cmd === 'reset') { this._voicePlay('reset'); StopwatchManager.reset(true); this._voiceLastExecAt = now; return true; }
         return false;
     },
 
@@ -1078,6 +1196,7 @@ const UI = {
                 return;
             }
             if (e.target.closest('#backBtn')) { this.handleBackClick(); return; }
+            if (e.target.closest('#helpBtn')) { this.showHelpDialog(); return; }
             if (e.target.closest('#settingsBtn')) { this.showSettingsDialog(); return; }
 
             // FAB actions
@@ -1319,6 +1438,9 @@ const UI = {
         this.app.innerHTML = `
             <header id="header">
                 <div style="display:flex;gap:8px;align-items:center;">
+                    <button id="helpBtn" class="icon-btn" title="${this.t('help.title')}">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 115.82 1c0 2-3 2-3 4"/><line x1="12" y1="17" x2="12" y2="17"/></svg>
+                    </button>
                     <button id="newFolderBtn" class="icon-btn" title="${this.t('tooltip.newProject')}">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/>
@@ -1386,6 +1508,9 @@ const UI = {
         
         this.app.innerHTML = `
             <header>
+                <button id="helpBtn" class="icon-btn" title="${this.t('help.title')}">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 115.82 1c0 2-3 2-3 4"/><line x1="12" y1="17" x2="12" y2="17"/></svg>
+                </button>
                 <button id="backBtn" class="icon-btn">
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M19 12H5M12 19l-7-7 7-7"/>
@@ -1477,6 +1602,9 @@ const UI = {
         
         this.app.innerHTML = `
             <header>
+                <button id="helpBtn" class="icon-btn" title="${this.t('help.title')}">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 115.82 1c0 2-3 2-3 4"/><line x1="12" y1="17" x2="12" y2="17"/></svg>
+                </button>
                 <button id="backBtn" class="icon-btn">
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M19 12H5M12 19l-7-7 7-7"/>
@@ -1547,6 +1675,9 @@ const UI = {
         
         this.app.innerHTML = `
             <header>
+                <button id="helpBtn" class="icon-btn" title="${this.t('help.title')}">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 115.82 1c0 2-3 2-3 4"/><line x1="12" y1="17" x2="12" y2="17"/></svg>
+                </button>
                 <button id="backBtn" class="icon-btn">
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M19 12H5M12 19l-7-7 7-7"/>
