@@ -20,6 +20,10 @@ const AppState = {
         timeMode: localStorage.getItem('as_timeMode') || 'hms',
         showHundredths: JSON.parse(localStorage.getItem('as_showHundredths') || 'true')
     },
+    // Countdown-to-start (ephemeral)
+    countdownSeconds: null,
+    countdownIntervalId: null,
+    countdownActive: false,
 
     // Wake Lock helpers (keep screen awake while charging)
     async requestWakeLock() {
@@ -212,6 +216,10 @@ const StopwatchManager = {
         AppState.stopwatch.isRunning = false;
         AppState.stopwatch.isPaused = false;
         this.stopTimer();
+        // Clear any pending countdown
+        if (AppState.countdownIntervalId) { clearTimeout(AppState.countdownIntervalId); AppState.countdownIntervalId = null; }
+        AppState.countdownActive = false;
+        AppState.countdownSeconds = null;
         if (AppState.stopwatch.laps.length > 0 && !suppressSave) {
             UI.showSaveDialog();
         }
@@ -314,6 +322,69 @@ const Utils = {
             };
             img.src = dataUrl;
         });
+    },
+
+    // Simple WebAudio beeps (works without assets). Can be replaced by provided sounds later.
+    _audioCtx: null,
+    async beep(frequency = 880, durationMs = 140, volume = 0.15) {
+        try {
+            const Ctx = window.AudioContext || window.webkitAudioContext;
+            if (!Ctx) return;
+            if (!this._audioCtx) this._audioCtx = new Ctx();
+            const ctx = this._audioCtx;
+            const o = ctx.createOscillator();
+            const g = ctx.createGain();
+            o.frequency.value = frequency;
+            g.gain.value = volume;
+            o.type = 'sine';
+            o.connect(g); g.connect(ctx.destination);
+            const now = ctx.currentTime;
+            o.start(now);
+            o.stop(now + durationMs / 1000);
+            return new Promise(res => o.onended = res);
+        } catch { /* ignore */ }
+    },
+}
+;
+
+// Lightweight sound manager for UI actions (preloaded, minimal latency)
+const Sound = {
+    clips: {},
+    initialized: false,
+    files: {
+        start: 'audio/single-tone.mp3',
+        resume: 'audio/single-tone.mp3',
+        lap: 'audio/double-tone.mp3',
+        pause: 'audio/low-to%20high-click.mp3',
+        stop: 'audio/synth1.mp3',
+        reset: 'audio/reset.mp3',
+        ui: 'audio/low-click.mp3',
+        confirm: 'audio/low-click-double.mp3'
+    },
+    init() {
+        if (this.initialized) return;
+        for (const [k, src] of Object.entries(this.files)) {
+            const a = new Audio(src);
+            a.preload = 'auto';
+            a.load();
+            this.clips[k] = a;
+        }
+        // Unlock on first gesture (iOS)
+        const unlock = () => {
+            try { for (const a of Object.values(this.clips)) { a.muted = false; a.currentTime = 0; } } catch {}
+        };
+        window.addEventListener('touchstart', unlock, { once: true, passive: true });
+        window.addEventListener('click', unlock, { once: true });
+        this.initialized = true;
+    },
+    play(name) {
+        const base = this.clips[name];
+        if (!base) return;
+        try {
+            // clone to allow overlaps and avoid cutting off
+            const a = base.cloneNode(true);
+            a.play().catch(()=>{});
+        } catch {}
     }
 };
 
@@ -412,6 +483,9 @@ const Locales = {
         'choice.remeasureDesc': 'Replaces the old measurements with new ones.',
         'tooltip.newProject': 'New Project',
         'tooltip.startStopwatch': 'Start Stopwatch',
+        'tooltip.countdown': 'Countdown to start',
+        'countdown.title': 'Countdown',
+        'countdown.secondsLabel': 'Seconds (1–10)',
         'error.wakeLockUnsupported': 'Screen Wake Lock is not supported on this browser.',
         'error.saveFailed': 'Saving failed: storage is full or data too large. Consider deleting older results or images.',
         'error.projectNotFound': 'Project not found. It may have been deleted.',
@@ -514,6 +588,9 @@ const Locales = {
         'choice.remeasureDesc': 'Zamjenjuje stare izmjere novima.',
         'tooltip.newProject': 'Novi projekt',
         'tooltip.startStopwatch': 'Pokreni štopericu',
+        'tooltip.countdown': 'Odbrojavanje prije starta',
+        'countdown.title': 'Odbrojavanje',
+        'countdown.secondsLabel': 'Sekunde (1–10)',
         'error.wakeLockUnsupported': 'Zadržavanje zaslona nije podržano u ovom pregledniku.',
         'error.saveFailed': 'Spremanje nije uspjelo: pohrana je puna ili su podaci preveliki. Obrišite starije rezultate ili slike.',
         'error.projectNotFound': 'Projekt nije pronađen. Možda je obrisan.',
@@ -537,6 +614,7 @@ if (typeof window !== 'undefined' && window.LocalesExtra) {
 const UI = {
     init() {
         this.app = document.getElementById('app');
+        Sound.init();
         this.applyTheme();
         this.setupEventListeners();
         this.setupGlobalInputHandlers();
@@ -654,6 +732,62 @@ const UI = {
         `;
     },
 
+    async startCountdown(seconds) {
+        if (AppState.countdownActive) return;
+        AppState.countdownActive = true;
+        let remaining = Math.max(1, Math.min(10, parseInt(seconds || 0)));
+        const display = document.getElementById('timeDisplay');
+        const startBtn = document.getElementById('startBtn');
+        if (startBtn) startBtn.disabled = true;
+        // Show initial value and play first click immediately on press
+        if (display) display.textContent = remaining.toString();
+        await Utils.beep(880, 120);
+        // Every second: decrement, update, click, or finish
+        AppState.countdownIntervalId = setInterval(async () => {
+            remaining -= 1;
+            if (remaining > 0) {
+                if (display) display.textContent = remaining.toString();
+                await Utils.beep(880, 120);
+            } else {
+                clearInterval(AppState.countdownIntervalId);
+                AppState.countdownIntervalId = null;
+                // Play final tone and start immediately with no delay
+                Utils.beep(1200, 220, 0.2);
+                AppState.countdownActive = false;
+                AppState.countdownSeconds = null;
+                if (startBtn) startBtn.disabled = false;
+                StopwatchManager.start();
+                this.renderStopwatch();
+            }
+        }, 1000);
+    },
+
+    showCountdownDialog() {
+        const modal = this.createModal(this.t('countdown.title'), `
+            <div class="form-group">
+                <label class="form-label">${this.t('countdown.secondsLabel')}</label>
+                <input type="number" class="form-input" id="countdownInput" min="1" max="10" value="${AppState.countdownSeconds || 5}" inputmode="numeric"/>
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" id="cancelCountdownBtn">${this.t('action.cancel')}</button>
+                <button class="btn btn-primary" id="applyCountdownBtn">${this.t('action.apply')}</button>
+            </div>
+        `);
+        const input = modal.querySelector('#countdownInput');
+        modal.querySelector('#cancelCountdownBtn').addEventListener('click', ()=> modal.remove());
+        modal.querySelector('#applyCountdownBtn').addEventListener('click', ()=>{
+            const v = parseInt((input.value||'').trim());
+            if (!isNaN(v) && v >= 1 && v <= 10) {
+                AppState.countdownSeconds = v;
+                modal.remove();
+                this.renderStopwatch();
+            } else {
+                input.focus();
+            }
+        });
+        setTimeout(()=>{ input && input.select && input.select(); }, 10);
+    },
+
     updateThemeToggleIcon() {
         const btn = this.app && this.app.querySelector ? this.app.querySelector('#themeToggle') : null;
         if (btn) {
@@ -699,6 +833,18 @@ const UI = {
         let themeTogglePressTimer = null;
         let longPressTriggered = false;
         let recentTouchToggle = false; // suppress subsequent click after touch
+        
+        // Generic UI click sound with low latency (capture to run before handlers)
+        this.app.addEventListener('pointerdown', (e) => {
+            const el = e.target.closest('button, .menu-item, .palette-card');
+            if (!el) return;
+            // Skip if it's one of the stopwatch controls (handled specifically)
+            if (e.target.closest('#startBtn, #resumeBtn, #pauseBtn, #stopBtn, #lapBtn, #resetBtn')) return;
+            // Heuristic: confirmation buttons
+            const txt = (el.textContent || '').trim().toLowerCase();
+            const isConfirm = /apply|save|update|create|proceed|ok|yes/.test(txt);
+            Sound.play(isConfirm ? 'confirm' : 'ui');
+        }, true);
         
         const startLongPress = (e) => {
             const btn = e.target.closest('#themeToggle');
@@ -822,17 +968,22 @@ const UI = {
             }
 
             // Stopwatch controls
+            if (e.target.closest('#countdownBtn')) { this.showCountdownDialog(); return; }
             if (e.target.closest('#startBtn')) {
                 if (AppState.resultChoiceTargetId && !AppState.remeasureResultId && !AppState.continueResultId) {
                     this.showReOrContinuePrompt();
                     return;
                 }
+                if (AppState.countdownSeconds && !AppState.stopwatch.isRunning) {
+                    this.startCountdown(AppState.countdownSeconds); return;
+                }
+                Sound.play('start');
                 StopwatchManager.start(); this.renderStopwatch(); return; }
-            if (e.target.closest('#pauseBtn')) { StopwatchManager.pause(); this.renderStopwatch(); return; }
-            if (e.target.closest('#resumeBtn')) { StopwatchManager.resume(); this.renderStopwatch(); return; }
-            if (e.target.closest('#stopBtn')) { StopwatchManager.stop(); return; }
-            if (e.target.closest('#lapBtn')) { StopwatchManager.recordLap(); return; }
-            if (e.target.closest('#resetBtn')) { StopwatchManager.reset(true); return; }
+            if (e.target.closest('#pauseBtn')) { Sound.play('pause'); StopwatchManager.pause(); this.renderStopwatch(); return; }
+            if (e.target.closest('#resumeBtn')) { Sound.play('resume'); StopwatchManager.resume(); this.renderStopwatch(); return; }
+            if (e.target.closest('#stopBtn')) { Sound.play('stop'); StopwatchManager.stop(); return; }
+            if (e.target.closest('#lapBtn')) { Sound.play('lap'); StopwatchManager.recordLap(); return; }
+            if (e.target.closest('#resetBtn')) { Sound.play('reset'); StopwatchManager.reset(true); return; }
         });
 
         // Drag & Drop for results
@@ -924,6 +1075,14 @@ const UI = {
     
     setupKeyboardShortcuts() {
         document.addEventListener('keydown', (e) => {
+            // Do not hijack keys while the user is typing in inputs/textareas/contenteditable
+            const t = e.target;
+            if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) {
+                return;
+            }
+            // If a modal is open (e.g., Save Result), avoid global shortcuts
+            const modalOpen = document.querySelector('.modal');
+            if (modalOpen) return;
             if (AppState.currentView === 'stopwatch') {
                 if (e.key === 'Enter') {
                     e.preventDefault();
@@ -932,15 +1091,24 @@ const UI = {
                         return;
                     }
                     if (!AppState.stopwatch.isRunning) {
-                        StopwatchManager.start();
+                        if (AppState.countdownSeconds) {
+                            this.startCountdown(AppState.countdownSeconds);
+                        } else {
+                            Sound.play('start');
+                            StopwatchManager.start();
+                            this.renderStopwatch();
+                        }
                     } else if (!AppState.stopwatch.isPaused) {
+                        Sound.play('pause');
                         StopwatchManager.pause();
                     } else {
+                        Sound.play('resume');
                         StopwatchManager.resume();
                     }
-                    this.renderStopwatch();
+                    if (AppState.stopwatch.isRunning) this.renderStopwatch();
                 } else if (e.key === ' ') {
                     e.preventDefault();
+                    Sound.play('lap');
                     StopwatchManager.recordLap();
                 }
             }
@@ -1052,7 +1220,18 @@ const UI = {
                     <div class="time-display" id="timeDisplay">${Utils.formatTime(AppState.stopwatch.elapsedTime)}</div>
                     <div class="controls">
                         ${!isRunning ? `
-                            <button class="btn btn-primary control-btn" id="startBtn">${this.t('action.start')}</button>
+                            <div class="controls-stack">
+                                <button class="btn btn-primary control-btn ${AppState.countdownSeconds ? 'pulse' : ''}" id="startBtn">${this.t('action.start')}${AppState.countdownSeconds ? ` (${AppState.countdownSeconds}${this.t('label.s')})` : ''}</button>
+                                <div class="controls-row" style="margin-top:8px;justify-content:center;gap:10px;">
+                                    <button class="icon-btn" id="countdownBtn" title="${this.t('tooltip.countdown')}" style="transform:scale(1.25);">
+                                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                            <path d="M9 2h6"/>
+                                            <circle cx="12" cy="12" r="9"/>
+                                            <path d="M12 12 L16 9 L13 15 Z" fill="currentColor" stroke="none"/>
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
                         ` : isPaused ? `
                             <div class="controls-stack">
                                 <button class="btn btn-success control-btn btn-next-big" id="resumeBtn">${this.t('action.resume')}</button>
@@ -1254,7 +1433,7 @@ const UI = {
         if (input) { input.focus(); input.select(); }
     },
     
-    createModal(title, content) {
+    createModal(title, content, options = {}) {
         const modal = document.createElement('div');
         modal.className = 'modal active';
         modal.innerHTML = `
@@ -1264,7 +1443,10 @@ const UI = {
             </div>
         `;
         document.body.appendChild(modal);
-        modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
+        const closeOnOutside = options.closeOnOutside !== false;
+        if (closeOnOutside) {
+            modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
+        }
         return modal;
     },
     
@@ -1659,7 +1841,7 @@ const UI = {
             <div class="modal-actions mt-3">
                 <button class="btn btn-secondary" id="closeSettingsBtn">${this.t('action.close')}</button>
             </div>
-        `);
+        `, { closeOnOutside: false });
         modal.querySelector('#closeSettingsBtn').addEventListener('click', () => modal.remove());
 
         // Persist settings when changed (Home view)
