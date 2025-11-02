@@ -24,6 +24,13 @@ const AppState = {
     countdownSeconds: null,
     countdownIntervalId: null,
     countdownActive: false,
+    // Voice control (ephemeral)
+    voice: {
+        enabled: false,
+        recognizing: false,
+        recognizer: null,
+        lang: 'en-US'
+    },
 
     // Wake Lock helpers (keep screen awake while charging)
     async requestWakeLock() {
@@ -491,6 +498,8 @@ const Locales = {
         'tooltip.newProject': 'New Project',
         'tooltip.startStopwatch': 'Start Stopwatch',
         'tooltip.countdown': 'Countdown to start',
+        'tooltip.voice': 'Voice control',
+        'error.voiceUnsupported': 'Voice control is not supported on this browser.',
         'countdown.title': 'Countdown',
         'countdown.secondsLabel': 'Seconds (1–10)',
         'error.wakeLockUnsupported': 'Screen Wake Lock is not supported on this browser.',
@@ -596,6 +605,8 @@ const Locales = {
         'tooltip.newProject': 'Novi projekt',
         'tooltip.startStopwatch': 'Pokreni štopericu',
         'tooltip.countdown': 'Odbrojavanje prije starta',
+        'tooltip.voice': 'Glasovno upravljanje',
+        'error.voiceUnsupported': 'Glasovno upravljanje nije podržano u ovom pregledniku.',
         'countdown.title': 'Odbrojavanje',
         'countdown.secondsLabel': 'Sekunde (1–10)',
         'error.wakeLockUnsupported': 'Zadržavanje zaslona nije podržano u ovom pregledniku.',
@@ -996,6 +1007,7 @@ const UI = {
 
             // Stopwatch controls
             if (e.target.closest('#countdownBtn')) { this.showCountdownDialog(); return; }
+            if (e.target.closest('#voiceToggle')) { this.toggleVoiceControl(); return; }
             if (e.target.closest('#startBtn')) {
                 if (AppState.resultChoiceTargetId && !AppState.remeasureResultId && !AppState.continueResultId) {
                     this.showReOrContinuePrompt();
@@ -1255,6 +1267,15 @@ const UI = {
                                             <path d="M9 2h6"/>
                                             <circle cx="12" cy="12" r="9"/>
                                             <path d="M12 12 L16 9 L13 15 Z" fill="currentColor" stroke="none"/>
+                                        </svg>
+                                    </button>
+                                </div>
+                                <div class="controls-row" style="margin-top:8px;justify-content:center;gap:10px;">
+                                    <button class="icon-btn ${AppState.voice && AppState.voice.enabled ? 'active' : ''}" id="voiceToggle" title="${this.t('tooltip.voice')}">
+                                        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                            <path d="M12 1v5"/>
+                                            <rect x="9" y="6" width="6" height="10" rx="3"/>
+                                            <path d="M5 11v1a7 7 0 0 0 14 0v-1"/>
                                         </svg>
                                     </button>
                                 </div>
