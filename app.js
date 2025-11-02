@@ -1018,6 +1018,8 @@ const UI = {
     _lastVoiceAt: 0,
     _lastVoiceTextNorm: '',
     _lastExecWasInterim: false,
+    _lastVoiceLapAt: 0,
+    _voiceStopRollbackMs: 650,
     _getRecognizer() {
         if (!this._canUseSpeech()) return null;
         if (AppState.voice.recognizer) return AppState.voice.recognizer;
@@ -1124,13 +1126,27 @@ const UI = {
         // Diacritic-insensitive match to better support Croatian variants like "sljedeće", "poništi"
         const tn = t.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
         const has = (...words) => words.some(w => t.includes(w) || tn.includes(w));
+        const contains = (s) => (t.includes(s) || tn.includes(s));
+        const nextStems = ['next','lap','sljede','sljedece','sljedeci','dalje','krug','runda'];
+        const stopStems = ['stop','zaustav','stani'];
+        const pauseStems = ['pause','pauz'];
+        const resumeStems = ['resume','continue','nastav'];
+        const resetStems = ['reset','restart','resetiraj','ponist'];
+        const startStems = ['start','go','begin','pokreni','kreni','startaj'];
+        const found = (arr) => arr.some(contains);
+        const isStop = found(stopStems);
+        const isPause = found(pauseStems);
+        const isResume = found(resumeStems);
+        const isReset = found(resetStems);
+        const isStart = found(startStems);
+        const isNext = found(nextStems);
         let cmd = null;
-        if (has('start','go','begin','pokreni','kreni','startaj')) cmd = 'start';
-        else if (has('next','lap','sljede','sljedece','sljedeci','dalje','krug','runda')) cmd = 'next';
-        else if (has('pause','pauza')) cmd = 'pause';
-        else if (has('resume','continue','nastavi')) cmd = 'resume';
-        else if (has('stop','zaustavi','stani')) cmd = 'stop';
-        else if (has('reset','restart','resetiraj','ponisti')) cmd = 'reset';
+        if (isStop) cmd = 'stop';
+        else if (isPause) cmd = 'pause';
+        else if (isResume) cmd = 'resume';
+        else if (isReset) cmd = 'reset';
+        else if (isStart) cmd = 'start';
+        else if (isNext) cmd = 'next';
         if (!cmd) return false;
 
         // Debounce & echo suppression
@@ -1187,6 +1203,7 @@ const UI = {
             this._lastVoiceAt = now;
             this._lastVoiceTextNorm = tn;
             this._lastExecWasInterim = !isFinal;
+            this._lastVoiceLapAt = now;
             try { console.debug('[voice][exec]', { cmd, now }); } catch {}
             setTimeout(() => { this._voiceCommandActive = false; }, 100);
             this._restartRecognitionSoon();
@@ -1194,7 +1211,25 @@ const UI = {
         }
         if (cmd === 'pause') { this._voiceCommandActive = true; if (AppState.stopwatch.isRunning && !AppState.stopwatch.isPaused) { this._voicePlay('pause'); StopwatchManager.pause(); this.renderStopwatch(); } this._voiceLastExecAt = now; this._lastVoiceCmd = cmd; this._lastVoiceAt = now; this._lastVoiceTextNorm = tn; this._lastExecWasInterim = !isFinal; try { console.debug('[voice][exec]', { cmd, now }); } catch {} setTimeout(() => { this._voiceCommandActive = false; }, 100); this._restartRecognitionSoon(); return true; }
         if (cmd === 'resume') { this._voiceCommandActive = true; if (AppState.stopwatch.isPaused) { this._voicePlay('resume'); StopwatchManager.resume(); this.renderStopwatch(); } this._voiceLastExecAt = now; this._lastVoiceCmd = cmd; this._lastVoiceAt = now; this._lastVoiceTextNorm = tn; this._lastExecWasInterim = !isFinal; try { console.debug('[voice][exec]', { cmd, now }); } catch {} setTimeout(() => { this._voiceCommandActive = false; }, 100); this._restartRecognitionSoon(); return true; }
-        if (cmd === 'stop') { this._voiceCommandActive = true; this._voicePlay('stop'); StopwatchManager.stop(); this._voiceLastExecAt = now; this._lastVoiceCmd = cmd; this._lastVoiceAt = now; this._lastVoiceTextNorm = tn; this._lastExecWasInterim = !isFinal; try { console.debug('[voice][exec]', { cmd, now }); } catch {} setTimeout(() => { this._voiceCommandActive = false; }, 100); /* disable listening after stop */ AppState.voice.enabled = false; this._stopVoiceRecognition(); this.renderStopwatch(); return true; }
+        if (cmd === 'stop') {
+            this._voiceCommandActive = true;
+            if (this._lastVoiceLapAt && (now - this._lastVoiceLapAt) <= this._voiceStopRollbackMs && AppState.stopwatch.laps && AppState.stopwatch.laps.length > 0) {
+                try { AppState.stopwatch.laps.pop(); console.debug('[voice][rollback]', { removed: 'lastLap', delta: now - this._lastVoiceLapAt }); } catch {}
+            }
+            this._voicePlay('stop');
+            StopwatchManager.stop();
+            this._voiceLastExecAt = now;
+            this._lastVoiceCmd = cmd;
+            this._lastVoiceAt = now;
+            this._lastVoiceTextNorm = tn;
+            this._lastExecWasInterim = !isFinal;
+            try { console.debug('[voice][exec]', { cmd, now }); } catch {}
+            setTimeout(() => { this._voiceCommandActive = false; }, 100);
+            AppState.voice.enabled = false;
+            this._stopVoiceRecognition();
+            this.renderStopwatch();
+            return true;
+        }
         if (cmd === 'reset') { this._voiceCommandActive = true; this._voicePlay('reset'); StopwatchManager.reset(true); this._voiceLastExecAt = now; this._lastVoiceCmd = cmd; this._lastVoiceAt = now; this._lastVoiceTextNorm = tn; this._lastExecWasInterim = !isFinal; try { console.debug('[voice][exec]', { cmd, now }); } catch {} setTimeout(() => { this._voiceCommandActive = false; }, 100); this._restartRecognitionSoon(); return true; }
         return false;
     },
