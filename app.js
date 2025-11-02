@@ -411,6 +411,24 @@ const Sound = {
         window.addEventListener('click', unlock, { once: true });
         this.initialized = true;
     },
+    forceUnlock() {
+        // More aggressive unlock for iOS Safari
+        try {
+            for (const a of Object.values(this.clips)) {
+                if (a && a.paused) {
+                    a.muted = true;
+                    a.currentTime = 0;
+                    a.play().then(() => { a.pause(); a.currentTime = 0; a.muted = false; }).catch(() => { a.muted = false; });
+                }
+            }
+            if (this._ctx && this._ctx.state === 'suspended') {
+                this._ctx.resume().catch(()=>{});
+            }
+            if (Utils._audioCtx && Utils._audioCtx.state === 'suspended') {
+                Utils._audioCtx.resume().catch(()=>{});
+            }
+        } catch {}
+    },
     async _preloadBuffer(key, url) {
         try {
             if (!this._ctx) return;
@@ -558,6 +576,9 @@ const Locales = {
         'help.tipsText': 'Add to Home Screen for a full-screen experience. Keep the screen awake in settings when charging.',
         'orientation.title': 'Rotate your device',
         'orientation.message': 'This app works in portrait mode only. Please rotate your device back to portrait.',
+        'lap.remove': 'Remove Lap',
+        'lap.removeTitle': 'Remove this lap?',
+        'lap.removeText': 'Lap {number} will be removed. Subsequent laps will be renumbered and times recalculated.',
         'countdown.title': 'Countdown',
         'countdown.secondsLabel': 'Seconds (1–10)',
         'error.wakeLockUnsupported': 'Screen Wake Lock is not supported on this browser.',
@@ -688,6 +709,9 @@ const Locales = {
         'help.tipsText': 'Dodajte na početni zaslon za cijeli ekran. U postavkama zadržite ekran budnim dok se puni.',
         'orientation.title': 'Okrenite uređaj',
         'orientation.message': 'Aplikacija radi samo u vertikalnom prikazu. Vratite uređaj u portret.',
+        'lap.remove': 'Ukloni krug',
+        'lap.removeTitle': 'Ukloniti ovaj krug?',
+        'lap.removeText': 'Krug {number} će biti uklonjen. Sljedeći krugovi će biti preuređeni, a vremena ponovno izračunata.',
         'countdown.title': 'Odbrojavanje',
         'countdown.secondsLabel': 'Sekunde (1–10)',
         'error.wakeLockUnsupported': 'Zadržavanje zaslona nije podržano u ovom pregledniku.',
@@ -728,6 +752,13 @@ const UI = {
             window.addEventListener('touchstart', firstInteract, { once: true, passive: true });
             window.addEventListener('click', firstInteract, { once: true });
         }
+        // Aggressive audio unlock for iOS on first interaction
+        const aggressiveUnlock = () => {
+            Sound.forceUnlock();
+        };
+        window.addEventListener('pointerdown', aggressiveUnlock, { once: true, passive: true });
+        window.addEventListener('touchstart', aggressiveUnlock, { once: true, passive: true });
+        window.addEventListener('click', aggressiveUnlock, { once: true });
         try { if (screen.orientation && screen.orientation.lock) { screen.orientation.lock('portrait').catch(()=>{}); } } catch(_) {}
         this.applyLanguage();
         this.renderHome();
@@ -738,6 +769,8 @@ const UI = {
             'applyThemeBtn','calcQuantityBtn','calcTimeBtn','calcPriceBtn','saveResultForm','newFolderForm'
         ]);
         document.addEventListener('pointerdown', (e) => {
+            // Skip if voice command is executing
+            if (this._voiceCommandActive) return;
             const target = e.target;
             const controlHit = target.closest('#startBtn, #resumeBtn, #pauseBtn, #stopBtn, #lapBtn, #resetBtn');
             if (controlHit) return; // handled elsewhere
@@ -750,6 +783,32 @@ const UI = {
             const isConfirm = isStrongBtn || hasConfirmId || confirmWords.test(txt);
             Sound.play(isConfirm ? 'confirm' : 'ui');
         }, true);
+
+        // Long-press detection for lap items
+        let longPressTimer = null;
+        let longPressTarget = null;
+        document.addEventListener('pointerdown', (e) => {
+            const lapItem = e.target.closest('.lap-item');
+            if (!lapItem || AppState.currentView !== 'result') return;
+            longPressTarget = lapItem;
+            longPressTimer = setTimeout(() => {
+                const lapIndex = parseInt(lapItem.dataset.lapIndex);
+                const resultId = lapItem.dataset.resultId;
+                if (!isNaN(lapIndex) && resultId) {
+                    this.showRemoveLapDialog(resultId, lapIndex);
+                }
+            }, 500);
+        });
+        document.addEventListener('pointerup', () => {
+            if (longPressTimer) clearTimeout(longPressTimer);
+            longPressTimer = null;
+            longPressTarget = null;
+        });
+        document.addEventListener('pointercancel', () => {
+            if (longPressTimer) clearTimeout(longPressTimer);
+            longPressTimer = null;
+            longPressTarget = null;
+        });
     },
     
     // i18n helpers
@@ -1013,9 +1072,10 @@ const UI = {
         if (!rec) return;
         try {
             setTimeout(() => {
-                try { rec.abort && rec.abort(); } catch(_) {}
-                try { rec.start(); AppState.voice.recognizing = true; } catch(_) {}
-            }, 200);
+                if (AppState.voice && AppState.voice.enabled && !AppState.voice.recognizing) {
+                    try { rec.start(); AppState.voice.recognizing = true; } catch(_) {}
+                }
+            }, 300);
         } catch (_) {}
     },
     _tryExecuteVoiceFromTranscript(text, isFinal) {
@@ -1033,9 +1093,11 @@ const UI = {
         if (!cmd) return false;
 
         if (cmd === 'start') {
+            this._voiceCommandActive = true;
             if (AppState.resultChoiceTargetId && !AppState.remeasureResultId && !AppState.continueResultId) {
                 this.showReOrContinuePrompt();
                 this._voiceLastExecAt = now;
+                setTimeout(() => { this._voiceCommandActive = false; }, 100);
                 return true;
             }
             if (!AppState.stopwatch.isRunning && !AppState.stopwatch.isPaused) {
@@ -1048,14 +1110,15 @@ const UI = {
                 }
             }
             this._voiceLastExecAt = now;
+            setTimeout(() => { this._voiceCommandActive = false; }, 100);
             this._restartRecognitionSoon();
             return true;
         }
-        if (cmd === 'next') { if (AppState.stopwatch.isRunning && !AppState.stopwatch.isPaused) { this._voicePlay('lap'); StopwatchManager.recordLap(); } this._voiceLastExecAt = now; this._restartRecognitionSoon(); return true; }
-        if (cmd === 'pause') { if (AppState.stopwatch.isRunning && !AppState.stopwatch.isPaused) { this._voicePlay('pause'); StopwatchManager.pause(); this.renderStopwatch(); } this._voiceLastExecAt = now; this._restartRecognitionSoon(); return true; }
-        if (cmd === 'resume') { if (AppState.stopwatch.isPaused) { this._voicePlay('resume'); StopwatchManager.resume(); this.renderStopwatch(); } this._voiceLastExecAt = now; this._restartRecognitionSoon(); return true; }
-        if (cmd === 'stop') { this._voicePlay('stop'); StopwatchManager.stop(); this._voiceLastExecAt = now; this._restartRecognitionSoon(); return true; }
-        if (cmd === 'reset') { this._voicePlay('reset'); StopwatchManager.reset(true); this._voiceLastExecAt = now; this._restartRecognitionSoon(); return true; }
+        if (cmd === 'next') { this._voiceCommandActive = true; if (AppState.stopwatch.isRunning && !AppState.stopwatch.isPaused) { this._voicePlay('lap'); StopwatchManager.recordLap(); } this._voiceLastExecAt = now; setTimeout(() => { this._voiceCommandActive = false; }, 100); this._restartRecognitionSoon(); return true; }
+        if (cmd === 'pause') { this._voiceCommandActive = true; if (AppState.stopwatch.isRunning && !AppState.stopwatch.isPaused) { this._voicePlay('pause'); StopwatchManager.pause(); this.renderStopwatch(); } this._voiceLastExecAt = now; setTimeout(() => { this._voiceCommandActive = false; }, 100); this._restartRecognitionSoon(); return true; }
+        if (cmd === 'resume') { this._voiceCommandActive = true; if (AppState.stopwatch.isPaused) { this._voicePlay('resume'); StopwatchManager.resume(); this.renderStopwatch(); } this._voiceLastExecAt = now; setTimeout(() => { this._voiceCommandActive = false; }, 100); this._restartRecognitionSoon(); return true; }
+        if (cmd === 'stop') { this._voiceCommandActive = true; this._voicePlay('stop'); StopwatchManager.stop(); this._voiceLastExecAt = now; setTimeout(() => { this._voiceCommandActive = false; }, 100); this._restartRecognitionSoon(); return true; }
+        if (cmd === 'reset') { this._voiceCommandActive = true; this._voicePlay('reset'); StopwatchManager.reset(true); this._voiceLastExecAt = now; setTimeout(() => { this._voiceCommandActive = false; }, 100); this._restartRecognitionSoon(); return true; }
         return false;
     },
 
@@ -1668,8 +1731,8 @@ const UI = {
                     <div class="laps-container">
                         <div class="laps-header">${this.t('stopwatch.allLaps')}</div>
                         <div class="laps-list">
-                            ${result.laps.map(lap => `
-                                <div class="lap-item">
+                            ${result.laps.map((lap, idx) => `
+                                <div class="lap-item" data-lap-index="${idx}" data-result-id="${result.id}">
                                     <div class="lap-number">${this.t('stopwatch.lap')} ${lap.number}</div>
                                     <div class="lap-times">
                                         <div class="lap-time">${Utils.formatTime(lap.time)}</div>
@@ -1756,6 +1819,56 @@ const UI = {
         btn.innerHTML = `<button class="btn btn-primary" id="closeHelpBtn">${this.t('action.close')}</button>`;
         modal.querySelector('.modal-content').appendChild(btn);
         modal.querySelector('#closeHelpBtn').addEventListener('click', ()=> modal.remove());
+    },
+
+    showRemoveLapDialog(resultId, lapIndex) {
+        const result = DataManager.getResults().find(r => r.id === resultId);
+        if (!result || !result.laps || lapIndex < 0 || lapIndex >= result.laps.length) return;
+        
+        const lap = result.laps[lapIndex];
+        const lapNum = lap.number;
+        const modalText = this.t('lap.removeText').replace('{number}', lapNum);
+        
+        const modal = this.createModal(this.t('lap.removeTitle'), `
+            <div class="form-group">
+                <p>${modalText}</p>
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" id="cancelRemoveLapBtn">${this.t('action.cancel')}</button>
+                <button class="btn btn-primary" id="confirmRemoveLapBtn">${this.t('lap.remove')}</button>
+            </div>
+        `);
+        
+        modal.querySelector('#cancelRemoveLapBtn').addEventListener('click', () => modal.remove());
+        modal.querySelector('#confirmRemoveLapBtn').addEventListener('click', () => {
+            this.removeLap(resultId, lapIndex);
+            modal.remove();
+        });
+    },
+
+    removeLap(resultId, lapIndex) {
+        const result = DataManager.getResults().find(r => r.id === resultId);
+        if (!result || !result.laps || lapIndex < 0 || lapIndex >= result.laps.length) return;
+        
+        // Remove the lap
+        const updatedLaps = result.laps.filter((_, idx) => idx !== lapIndex);
+        
+        // Renumber and recalculate cumulative times
+        let cumulativeTime = 0;
+        updatedLaps.forEach((lap, idx) => {
+            lap.number = idx + 1;
+            cumulativeTime += lap.time;
+            lap.cumulative = cumulativeTime;
+        });
+        
+        // Recalculate total time
+        const totalTime = updatedLaps.length > 0 ? updatedLaps[updatedLaps.length - 1].cumulative : 0;
+        
+        // Update the result
+        DataManager.updateResult(resultId, { laps: updatedLaps, totalTime });
+        
+        // Re-render the result detail
+        this.renderResultDetail(resultId);
     },
     
     showReOrContinuePrompt() {
