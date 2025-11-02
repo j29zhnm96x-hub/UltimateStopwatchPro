@@ -1013,7 +1013,10 @@ const UI = {
         return typeof window !== 'undefined' && (window.SpeechRecognition || window.webkitSpeechRecognition);
     },
     _voiceLastExecAt: 0,
-    _voiceCooldownMs: 900,
+    _voiceCooldownMs: 500,
+    _lastVoiceCmd: null,
+    _lastVoiceAt: 0,
+    _lastVoiceTextNorm: '',
     _getRecognizer() {
         if (!this._canUseSpeech()) return null;
         if (AppState.voice.recognizer) return AppState.voice.recognizer;
@@ -1052,6 +1055,9 @@ const UI = {
                 const alt = res[0];
                 const transcript = (alt && alt.transcript ? alt.transcript : '').toLowerCase().trim();
                 if (!transcript) continue;
+                try {
+                    console.debug('[voice][result]', { transcript, isFinal: res.isFinal, ts: Date.now(), lang: rec.lang });
+                } catch {}
                 // Execute immediately on interim if we detect a clear keyword
                 if (this._tryExecuteVoiceFromTranscript(transcript, res.isFinal)) {
                     // If executed, break to avoid multiple triggers
@@ -1126,6 +1132,16 @@ const UI = {
         else if (has('reset','restart','resetiraj','ponisti')) cmd = 'reset';
         if (!cmd) return false;
 
+        // Debounce & echo suppression
+        if (now - this._voiceLastExecAt < this._voiceCooldownMs) {
+            try { console.debug('[voice][suppress][cooldown]', { now, last: this._voiceLastExecAt, delta: now - this._voiceLastExecAt, cmdCandidate: cmd }); } catch {}
+            return false;
+        }
+        if (tn && this._lastVoiceTextNorm && tn === this._lastVoiceTextNorm && now - this._lastVoiceAt < 500) {
+            try { console.debug('[voice][suppress][echo]', { tn, lastTn: this._lastVoiceTextNorm, delta: now - this._lastVoiceAt }); } catch {}
+            return false;
+        }
+
         if (cmd === 'start') {
             this._voiceCommandActive = true;
             if (AppState.resultChoiceTargetId && !AppState.remeasureResultId && !AppState.continueResultId) {
@@ -1144,15 +1160,34 @@ const UI = {
                 }
             }
             this._voiceLastExecAt = now;
+            this._lastVoiceCmd = cmd;
+            this._lastVoiceAt = now;
+            this._lastVoiceTextNorm = tn;
+            try { console.debug('[voice][exec]', { cmd, now }); } catch {}
             setTimeout(() => { this._voiceCommandActive = false; }, 100);
             this._restartRecognitionSoon();
             return true;
         }
-        if (cmd === 'next') { this._voiceCommandActive = true; if (AppState.stopwatch.isRunning && !AppState.stopwatch.isPaused) { this._voicePlay('lap'); StopwatchManager.recordLap(); } this._voiceLastExecAt = now; setTimeout(() => { this._voiceCommandActive = false; }, 100); this._restartRecognitionSoon(); return true; }
-        if (cmd === 'pause') { this._voiceCommandActive = true; if (AppState.stopwatch.isRunning && !AppState.stopwatch.isPaused) { this._voicePlay('pause'); StopwatchManager.pause(); this.renderStopwatch(); } this._voiceLastExecAt = now; setTimeout(() => { this._voiceCommandActive = false; }, 100); this._restartRecognitionSoon(); return true; }
-        if (cmd === 'resume') { this._voiceCommandActive = true; if (AppState.stopwatch.isPaused) { this._voicePlay('resume'); StopwatchManager.resume(); this.renderStopwatch(); } this._voiceLastExecAt = now; setTimeout(() => { this._voiceCommandActive = false; }, 100); this._restartRecognitionSoon(); return true; }
-        if (cmd === 'stop') { this._voiceCommandActive = true; this._voicePlay('stop'); StopwatchManager.stop(); this._voiceLastExecAt = now; setTimeout(() => { this._voiceCommandActive = false; }, 100); this._restartRecognitionSoon(); return true; }
-        if (cmd === 'reset') { this._voiceCommandActive = true; this._voicePlay('reset'); StopwatchManager.reset(true); this._voiceLastExecAt = now; setTimeout(() => { this._voiceCommandActive = false; }, 100); this._restartRecognitionSoon(); return true; }
+        if (cmd === 'next') {
+            // 500ms debounce already applied; execute once
+            this._voiceCommandActive = true;
+            if (AppState.stopwatch.isRunning && !AppState.stopwatch.isPaused) {
+                this._voicePlay('lap');
+                StopwatchManager.recordLap();
+            }
+            this._voiceLastExecAt = now;
+            this._lastVoiceCmd = cmd;
+            this._lastVoiceAt = now;
+            this._lastVoiceTextNorm = tn;
+            try { console.debug('[voice][exec]', { cmd, now }); } catch {}
+            setTimeout(() => { this._voiceCommandActive = false; }, 100);
+            this._restartRecognitionSoon();
+            return true;
+        }
+        if (cmd === 'pause') { this._voiceCommandActive = true; if (AppState.stopwatch.isRunning && !AppState.stopwatch.isPaused) { this._voicePlay('pause'); StopwatchManager.pause(); this.renderStopwatch(); } this._voiceLastExecAt = now; this._lastVoiceCmd = cmd; this._lastVoiceAt = now; this._lastVoiceTextNorm = tn; try { console.debug('[voice][exec]', { cmd, now }); } catch {} setTimeout(() => { this._voiceCommandActive = false; }, 100); this._restartRecognitionSoon(); return true; }
+        if (cmd === 'resume') { this._voiceCommandActive = true; if (AppState.stopwatch.isPaused) { this._voicePlay('resume'); StopwatchManager.resume(); this.renderStopwatch(); } this._voiceLastExecAt = now; this._lastVoiceCmd = cmd; this._lastVoiceAt = now; this._lastVoiceTextNorm = tn; try { console.debug('[voice][exec]', { cmd, now }); } catch {} setTimeout(() => { this._voiceCommandActive = false; }, 100); this._restartRecognitionSoon(); return true; }
+        if (cmd === 'stop') { this._voiceCommandActive = true; this._voicePlay('stop'); StopwatchManager.stop(); this._voiceLastExecAt = now; this._lastVoiceCmd = cmd; this._lastVoiceAt = now; this._lastVoiceTextNorm = tn; try { console.debug('[voice][exec]', { cmd, now }); } catch {} setTimeout(() => { this._voiceCommandActive = false; }, 100); /* disable listening after stop */ AppState.voice.enabled = false; this._stopVoiceRecognition(); this.renderStopwatch(); return true; }
+        if (cmd === 'reset') { this._voiceCommandActive = true; this._voicePlay('reset'); StopwatchManager.reset(true); this._voiceLastExecAt = now; this._lastVoiceCmd = cmd; this._lastVoiceAt = now; this._lastVoiceTextNorm = tn; try { console.debug('[voice][exec]', { cmd, now }); } catch {} setTimeout(() => { this._voiceCommandActive = false; }, 100); this._restartRecognitionSoon(); return true; }
         return false;
     },
 
