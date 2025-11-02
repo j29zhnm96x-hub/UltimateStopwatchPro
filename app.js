@@ -32,7 +32,7 @@ const AppState = {
         enabled: false,
         recognizing: false,
         recognizer: null,
-        lang: 'en-US'
+        lang: localStorage.getItem('as_voiceLang') || 'auto'
     },
 
     // Wake Lock helpers (keep screen awake while charging)
@@ -1000,7 +1000,20 @@ const UI = {
         if (AppState.voice.recognizer) return AppState.voice.recognizer;
         const Ctor = window.SpeechRecognition || window.webkitSpeechRecognition;
         const rec = new Ctor();
-        rec.lang = AppState.voice.lang || (AppState.lang === 'hr' ? 'hr-HR' : 'en-US');
+        const vLang = AppState.voice.lang;
+        // Prefer explicit voice setting; otherwise use device/browser language; fallback to app language, then en-US
+        let lang = 'en-US';
+        if (vLang && vLang !== 'auto') {
+            lang = vLang;
+        } else {
+            const navLang = (navigator.languages && navigator.languages[0]) || navigator.language || '';
+            if ((navLang && navLang.toLowerCase().startsWith('hr')) || (AppState.lang && AppState.lang.toLowerCase().startsWith('hr'))) {
+                lang = 'hr-HR';
+            } else if (navLang) {
+                lang = navLang;
+            }
+        }
+        rec.lang = lang;
         rec.continuous = true;
         rec.interimResults = true; // allow early detection
         rec.maxAlternatives = 1; // faster
@@ -1009,7 +1022,7 @@ const UI = {
             const GL = window.SpeechGrammarList || window.webkitSpeechGrammarList;
             if (GL) {
                 const list = new GL();
-                const jsgf = '#JSGF V1.0; grammar cmd; public <command> = start | next | pause | resume | stop | reset | pokreni | kreni | sljede | krug | pauza | nastavi | zaustavi | stani | resetiraj ;';
+                const jsgf = '#JSGF V1.0; grammar cmd; public <command> = start | next | pause | resume | stop | reset | pokreni | kreni | startaj | sljede | sljedece | sljedeci | dalje | krug | runda | pauza | nastavi | zaustavi | stani | resetiraj | ponisti ;';
                 list.addFromString(jsgf, 1);
                 rec.grammars = list;
             }
@@ -1082,14 +1095,16 @@ const UI = {
         const now = Date.now();
         if (now - this._voiceLastExecAt < this._voiceCooldownMs) return false;
         const t = (text || '').toLowerCase();
-        const has = (...words) => words.some(w => t.includes(w));
+        // Diacritic-insensitive match to better support Croatian variants like "sljedeće", "poništi"
+        const tn = t.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        const has = (...words) => words.some(w => t.includes(w) || tn.includes(w));
         let cmd = null;
-        if (has('start','go','begin','pokreni','kreni')) cmd = 'start';
-        else if (has('next','lap','sljede','krug')) cmd = 'next';
+        if (has('start','go','begin','pokreni','kreni','startaj')) cmd = 'start';
+        else if (has('next','lap','sljede','sljedece','sljedeci','dalje','krug','runda')) cmd = 'next';
         else if (has('pause','pauza')) cmd = 'pause';
         else if (has('resume','continue','nastavi')) cmd = 'resume';
         else if (has('stop','zaustavi','stani')) cmd = 'stop';
-        else if (has('reset','restart','resetiraj')) cmd = 'reset';
+        else if (has('reset','restart','resetiraj','ponisti')) cmd = 'reset';
         if (!cmd) return false;
 
         if (cmd === 'start') {
