@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#3b82f6">
@@ -24,6 +24,11 @@
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
+    <div class="orientation-lock">
+        <div style="opacity:0.6; font-size:48px; line-height:1;">📱</div>
+        <div style="margin-top:12px; font-weight:600;">Please rotate your device</div>
+        <div style="margin-top:4px; color:var(--text-secondary); font-size:14px;">This app works in portrait mode only.</div>
+    </div>
     <div id="app"></div>
     <script src="locales.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/nosleep.js@0.12.0/dist/NoSleep.min.js"></script>

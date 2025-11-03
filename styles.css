@@ -992,3 +992,23 @@ main {
         right: max(24px, env(safe-area-inset-right));
     }
 }
+
+/* Orientation Lock Overlay */
+.orientation-lock {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    z-index: 9999;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    font-size: 18px;
+    text-align: center;
+    padding: 20px;
+}
+
+@media screen and (orientation: landscape) and (max-width: 896px) {
+    .orientation-lock { display: flex; }
+}
