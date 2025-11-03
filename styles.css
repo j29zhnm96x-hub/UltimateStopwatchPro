@@ -992,19 +992,3 @@ main {
         right: max(24px, env(safe-area-inset-right));
     }
 }
-
-/* Force Portrait Orientation on Mobile */
-@media screen and (orientation: landscape) and (max-width: 896px) {
-    body {
-        transform: rotate(-90deg);
-        transform-origin: 50% 50%;
-        width: 100vh;
-        height: 100vw;
-        position: fixed;
-        top: 50%;
-        left: 50%;
-        margin-left: -50vw;
-        margin-top: -50vh;
-        overflow: hidden;
-    }
-}
