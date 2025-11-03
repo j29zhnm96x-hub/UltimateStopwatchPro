@@ -973,13 +973,7 @@ const UI = {
         `;
     },
     getHelpIcon() {
-        return `
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <circle cx="12" cy="12" r="10"/>
-                <path d="M9 9a3 3 0 1 1 6 1c0 2-3 2-3 4" stroke-linecap="round"/>
-                <circle cx="12" cy="17" r="1.8" fill="currentColor" stroke="none"/>
-            </svg>
-        `;
+        return '?';
     },
 
     async startCountdown(seconds) {
@@ -1438,10 +1432,10 @@ const UI = {
 
             // Navigation actions AFTER deletes
             const folderCard = e.target.closest('.folder-card');
-            if (folderCard) { this.renderFolderView(folderCard.dataset.folderId); return; }
+            if (folderCard) { Sound.play('ui'); this.renderFolderView(folderCard.dataset.folderId); return; }
 
             const resultItem = e.target.closest('.result-item');
-            if (resultItem) { this.renderResultDetail(resultItem.dataset.resultId); return; }
+            if (resultItem) { Sound.play('ui'); this.renderResultDetail(resultItem.dataset.resultId); return; }
 
             // Result detail actions
             if (e.target.closest('#calculateBtn')) { 
@@ -1802,16 +1796,20 @@ const UI = {
             this.renderHome();
             return;
         }
-        const results = DataManager.getFolderResults(folderId);
+        let results = DataManager.getFolderResults(folderId);
+        const sortPref = localStorage.getItem('as_folderSort_' + folderId) || 'newest';
+        if (sortPref === 'alpha') {
+            results = results.slice().sort((a,b) => (a.name||'').localeCompare(b.name||''));
+        } else if (sortPref === 'newest') {
+            results = results.slice().sort((a,b) => new Date(b.createdAt||0) - new Date(a.createdAt||0));
+        }
         const folderColor = folder.color || 'var(--bg-secondary)';
         const textColor = folder.textColor || null;
         const textVars = textColor ? `; --text-primary: ${textColor}; --text-secondary: ${this.adjustColor(textColor, -35)}` : '';
         
         this.app.innerHTML = `
             <header>
-                <button id="helpBtn" class="icon-btn" title="${this.t('help.title')}">
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 115.82 1c0 2-3 2-3 4"/><line x1="12" y1="17" x2="12" y2="17"/></svg>
-                </button>
+                <button id="helpBtn" class="icon-btn" title="${this.t('help.title')}">${this.getHelpIcon()}</button>
                 <button id="backBtn" class="icon-btn">
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M19 12H5M12 19l-7-7 7-7"/>
@@ -1884,9 +1882,7 @@ const UI = {
         
         this.app.innerHTML = `
             <header>
-                <button id="helpBtn" class="icon-btn" title="${this.t('help.title')}">
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 115.82 1c0 2-3 2-3 4"/><line x1="12" y1="17" x2="12" y2="17"/></svg>
-                </button>
+                <button id="helpBtn" class="icon-btn" title="${this.t('help.title')}">${this.getHelpIcon()}</button>
                 <button id="backBtn" class="icon-btn">
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M19 12H5M12 19l-7-7 7-7"/>
@@ -2445,24 +2441,14 @@ const UI = {
         // Time panel: long-press estimated quantity -> numeric calculator
         setupLongPress(modal.querySelector('#timeValue'), () => {
             const initial = (lastEstimatedQuantity != null) ? lastEstimatedQuantity : parseFloat(modal.querySelector('#timeValue').textContent || '0') || 0;
-            this.showNumericCalculator(initial, (val) => {
-                lastEstimatedQuantity = Math.max(0, Math.floor(val));
-                modal.querySelector('#timeValue').textContent = String(lastEstimatedQuantity);
-                const h = parseInt(hoursEl.value||'0')||0; const m = parseInt(minutesEl.value||'0')||0; const s = parseInt(secondsEl.value||'0')||0;
-                mem.time = { h, m, s, estimatedQuantity: lastEstimatedQuantity };
-            }, this.t('calc.tab.time'));
+            this.showNumericCalculator(initial, null, this.t('calc.tab.time'));
         });
 
         // Price panel: long-press price -> numeric calculator
         setupLongPress(modal.querySelector('#priceValue'), () => {
             const txt = modal.querySelector('#priceValue').textContent || '';
             const num = (lastPriceValue != null) ? lastPriceValue : parseFloat(txt.replace(/[^0-9.\-]/g, '')) || 0;
-            this.showNumericCalculator(num, (val) => {
-                lastPriceValue = Math.max(0, val);
-                modal.querySelector('#priceValue').textContent = AppState.currency + ' ' + lastPriceValue.toFixed(4);
-                const wage = parseFloat(wageInput.value)||0;
-                mem.price = { wage, pricePerPiece: lastPriceValue };
-            }, this.t('calc.tab.price'));
+            this.showNumericCalculator(num, null, this.t('calc.tab.price'));
         });
 
         // Quantity panel: long-press estimated total time -> converter
@@ -2516,8 +2502,7 @@ const UI = {
                     ${['7','8','9','/','4','5','6','*','1','2','3','-','0','.','(',')','C','⌫','+','='].map(k=>`<button type=\"button\" class=\"btn btn-secondary\" data-k=\"${k}\">${k}</button>`).join('')}
                 </div>
                 <div class="modal-actions">
-                    <button type="button" class="btn btn-secondary" id="calcCancel">${this.t('action.cancel')}</button>
-                    <button type="button" class="btn btn-success" id="calcDone">${this.t('action.save')}</button>
+                    <button type="button" class="btn btn-secondary" id="calcBack">${this.t('action.close')}</button>
                 </div>
             </div>
         `, { closeOnOutside: false });
@@ -2542,8 +2527,7 @@ const UI = {
                 expr += k; render();
             });
         });
-        modal.querySelector('#calcCancel').addEventListener('click', ()=> modal.remove());
-        modal.querySelector('#calcDone').addEventListener('click', ()=> { const {val} = evaluate(); const useVal = isNaN(val) ? lastVal : val; if (onApply) onApply(useVal); modal.remove(); });
+        modal.querySelector('#calcBack').addEventListener('click', ()=> modal.remove());
     },
 
     showTimeConverter(totalMs) {
@@ -2658,7 +2642,17 @@ const UI = {
                 </div>
             `;
         } else if (view === 'folder') {
-            body = `<p>${this.t('settings.projectSettings')}</p>`;
+            const folderId = AppState.currentFolder;
+            const sortPref = localStorage.getItem('as_folderSort_' + folderId) || 'newest';
+            body = `
+                <div class="form-group">
+                    <label class="form-label">Sort results</label>
+                    <select class="form-select" id="sortSelect">
+                        <option value="newest" ${sortPref==='newest' ? 'selected' : ''}>Newest first</option>
+                        <option value="alpha" ${sortPref==='alpha' ? 'selected' : ''}>A–Z</option>
+                    </select>
+                </div>
+            `;
         } else if (view === 'result') {
             body = `
                 <div class="form-group">
@@ -2676,6 +2670,20 @@ const UI = {
                 <div class="menu-list">
                     <button class="menu-item" id="remeasureItem">${this.t('settings.reOrContinue')}</button>
                     <button class="menu-item" id="openUpdateImage">${this.t('settings.uploadChangeImage')}</button>
+                </div>
+            `;
+        } else if (view === 'stopwatch') {
+            body = `
+                <div class="form-group">
+                    <label class="form-label">${this.t('settings.timeDisplay')}</label>
+                    <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
+                        <label><input type="radio" name="timeMode" value="hms" ${AppState.display.timeMode === 'hms' ? 'checked' : ''}/> ${this.t('settings.hms')}</label>
+                        <label><input type="radio" name="timeMode" value="ms" ${AppState.display.timeMode === 'ms' ? 'checked' : ''}/> ${this.t('settings.ms')}</label>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">${this.t('settings.precision')}</label>
+                    <label><input type="checkbox" id="showHundredths" ${AppState.display.showHundredths ? 'checked' : ''}/> ${this.t('settings.showHundredths')}</label>
                 </div>
             `;
         }
@@ -2764,7 +2772,7 @@ const UI = {
             timeModeRadios.forEach(r => r.addEventListener('change', () => {
                 AppState.display.timeMode = [...timeModeRadios].find(x => x.checked).value;
                 localStorage.setItem('as_timeMode', AppState.display.timeMode);
-                if (AppState.currentView === 'result') this.renderResultDetail(AppState.currentResult);
+                this.rerenderCurrentView();
             }));
         }
         const hundredthsCb = modal.querySelector('#showHundredths');
@@ -2772,7 +2780,17 @@ const UI = {
             hundredthsCb.addEventListener('change', () => {
                 AppState.display.showHundredths = !!hundredthsCb.checked;
                 localStorage.setItem('as_showHundredths', JSON.stringify(AppState.display.showHundredths));
-                if (AppState.currentView === 'result') this.renderResultDetail(AppState.currentResult);
+                this.rerenderCurrentView();
+            });
+        }
+        const sortSel = modal.querySelector('#sortSelect');
+        if (sortSel) {
+            sortSel.addEventListener('change', () => {
+                const folderId = AppState.currentFolder;
+                if (folderId) {
+                    localStorage.setItem('as_folderSort_' + folderId, sortSel.value);
+                    this.renderFolderView(folderId);
+                }
             });
         }
     },
