@@ -2898,6 +2898,29 @@ const UI = {
         menu.style.top = `${pos.top}px`;
         menu.style.left = `${pos.left}px`;
         this._openMenu = menu;
+        // Handle clicks on the menu itself (menu lives outside of this.app)
+        menu.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const item = e.target.closest('.menu-item');
+            if (!item) return;
+            const action = item.dataset.action;
+            const rid = item.dataset.resultId;
+            if (action === 'rename' && rid) {
+                this.closeResultMenu();
+                this.showRenameResultDialog(rid);
+                return;
+            }
+            if (action === 'delete' && rid) {
+                if (confirm(this.t('confirm.deleteResult'))) {
+                    DataManager.deleteResult(rid);
+                    this.closeResultMenu();
+                    this.renderFolderView(AppState.currentFolder);
+                } else {
+                    this.closeResultMenu();
+                }
+                return;
+            }
+        }, true);
         const close = (ev) => {
             if (!menu.contains(ev.target) && ev.target !== anchorEl) {
                 this.closeResultMenu();
