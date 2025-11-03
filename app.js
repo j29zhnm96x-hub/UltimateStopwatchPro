@@ -34,6 +34,7 @@ const AppState = {
         recognizer: null,
         lang: localStorage.getItem('as_voiceLang') || 'auto'
     },
+    calcMemory: {},
 
     // Wake Lock helpers (keep screen awake while charging)
     async requestWakeLock() {
@@ -61,7 +62,7 @@ const AppState = {
         try {
             if (this._wakeLock) { await this._wakeLock.release(); this._wakeLock = null; }
             if (this._noSleep && this._noSleepEnabled) { await this._noSleep.disable(); this._noSleepEnabled = false; }
-        } catch (e) { /* ignore */ }
+        } catch (e) { }
     },
     async updateKeepAwakeBinding() {
         // Remove old listeners if any
@@ -2354,6 +2355,7 @@ const UI = {
         
         const tabs = modal.querySelectorAll('.calc-tab');
         const panels = { quantity: modal.querySelector('#quantityPanel'), time: modal.querySelector('#timePanel'), price: modal.querySelector('#pricePanel') };
+        const mem = AppState.calcMemory[result.id] || (AppState.calcMemory[result.id] = {});
         
         tabs.forEach(tab => {
             tab.addEventListener('click', () => {
@@ -2371,6 +2373,7 @@ const UI = {
             lastQuantityTotalMs = totalMs;
             modal.querySelector('#quantityValue').textContent = Utils.formatTime(totalMs);
             modal.querySelector('#quantityResult').classList.remove('hidden');
+            mem.quantity = { totalMs, quantity };
         });
         
         const hoursEl = modal.querySelector('#hoursInput');
@@ -2403,17 +2406,21 @@ const UI = {
             lastEstimatedQuantity = quantity;
             modal.querySelector('#timeValue').textContent = String(quantity);
             modal.querySelector('#timeResult').classList.remove('hidden');
+            const h = parseInt(hoursEl.value||'0')||0; const m = parseInt(minutesEl.value||'0')||0; const s = parseInt(secondsEl.value||'0')||0;
+            mem.time = { h, m, s, estimatedQuantity: quantity };
         });
         
         let lastPriceValue = null;
+        const wageInput = modal.querySelector('#wageInput');
         modal.querySelector('#calcPriceBtn').addEventListener('click', () => {
-            const wage = parseFloat(modal.querySelector('#wageInput').value);
+            const wage = parseFloat(wageInput.value);
             if (wage) {
                 const pricePerPiece = (wage / 3600) * avgSeconds;
                 lastPriceValue = pricePerPiece;
                 modal.querySelector('#priceValue').textContent = AppState.currency + ' ' + pricePerPiece.toFixed(4);
                 modal.querySelector('#priceResult').classList.remove('hidden');
                 DataManager.updateResult(result.id, { hourlyWage: wage });
+                mem.price = { wage, pricePerPiece };
             }
         });
         
@@ -2441,6 +2448,8 @@ const UI = {
             this.showNumericCalculator(initial, (val) => {
                 lastEstimatedQuantity = Math.max(0, Math.floor(val));
                 modal.querySelector('#timeValue').textContent = String(lastEstimatedQuantity);
+                const h = parseInt(hoursEl.value||'0')||0; const m = parseInt(minutesEl.value||'0')||0; const s = parseInt(secondsEl.value||'0')||0;
+                mem.time = { h, m, s, estimatedQuantity: lastEstimatedQuantity };
             }, this.t('calc.tab.time'));
         });
 
@@ -2451,6 +2460,8 @@ const UI = {
             this.showNumericCalculator(num, (val) => {
                 lastPriceValue = Math.max(0, val);
                 modal.querySelector('#priceValue').textContent = AppState.currency + ' ' + lastPriceValue.toFixed(4);
+                const wage = parseFloat(wageInput.value)||0;
+                mem.price = { wage, pricePerPiece: lastPriceValue };
             }, this.t('calc.tab.price'));
         });
 
@@ -2461,15 +2472,48 @@ const UI = {
                 this.showTimeConverter(ms);
             }
         });
+
+        // Restore previous results if present
+        try {
+            if (mem.quantity && typeof mem.quantity.totalMs === 'number') {
+                lastQuantityTotalMs = mem.quantity.totalMs;
+                const qv = modal.querySelector('#quantityValue');
+                if (qv) {
+                    qv.textContent = Utils.formatTime(lastQuantityTotalMs);
+                    qv.parentElement?.classList?.remove('hidden');
+                }
+                const qi = modal.querySelector('#quantityInput');
+                if (qi && mem.quantity.quantity != null) qi.value = mem.quantity.quantity;
+            }
+            if (mem.time) {
+                if (typeof mem.time.h === 'number') hoursEl.value = mem.time.h;
+                if (typeof mem.time.m === 'number') minutesEl.value = mem.time.m;
+                if (typeof mem.time.s === 'number') secondsEl.value = mem.time.s;
+                updatePreview();
+                if (typeof mem.time.estimatedQuantity === 'number') {
+                    lastEstimatedQuantity = mem.time.estimatedQuantity;
+                    const tv = modal.querySelector('#timeValue');
+                    if (tv) { tv.textContent = String(lastEstimatedQuantity); tv.parentElement?.classList?.remove('hidden'); }
+                }
+            }
+            if (mem.price) {
+                if (typeof mem.price.wage === 'number') wageInput.value = String(mem.price.wage);
+                if (typeof mem.price.pricePerPiece === 'number') {
+                    lastPriceValue = mem.price.pricePerPiece;
+                    const pv = modal.querySelector('#priceValue');
+                    if (pv) { pv.textContent = AppState.currency + ' ' + lastPriceValue.toFixed(4); pv.parentElement?.classList?.remove('hidden'); }
+                }
+            }
+        } catch (e) { /* ignore */ }
     },
 
     showNumericCalculator(initialValue = 0, onApply = null, title = 'Calculator') {
         const modal = this.createModal(title, `
             <div style="display:flex;flex-direction:column;gap:12px;">
-                <div style="font-size:12px;color:var(--text-secondary);min-height:18px;" id="calcExprSmall"></div>
-                <input type="text" id="calcInput" class="form-input" inputmode="decimal" style="font-size:24px;font-weight:700;text-align:right;" />
+                <div id="calcExprSmall" style="font-size:12px;color:var(--text-secondary);min-height:18px;text-align:right;"></div>
+                <div id="calcMain" style="font-size:28px;font-weight:700;text-align:right;padding:8px 12px;border-radius:8px;background:var(--bg-secondary);"></div>
                 <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;">
-                    ${['7','8','9','/','4','5','6','*','1','2','3','-','0','.','(',')','C','⌫','+','='].map(k=>`<button type="button" class="btn btn-secondary" data-k="${k}">${k}</button>`).join('')}
+                    ${['7','8','9','/','4','5','6','*','1','2','3','-','0','.','(',')','C','⌫','+','='].map(k=>`<button type=\"button\" class=\"btn btn-secondary\" data-k=\"${k}\">${k}</button>`).join('')}
                 </div>
                 <div class="modal-actions">
                     <button type="button" class="btn btn-secondary" id="calcCancel">${this.t('action.cancel')}</button>
@@ -2478,30 +2522,28 @@ const UI = {
             </div>
         `, { closeOnOutside: false });
         modal.querySelector('.modal-content')?.classList.add('pop-animate');
-        const input = modal.querySelector('#calcInput');
         const small = modal.querySelector('#calcExprSmall');
+        const main = modal.querySelector('#calcMain');
         let expr = String(initialValue);
-        input.value = expr;
-        const buttons = modal.querySelectorAll('[data-k]');
-        const append = (s) => { const start = input.selectionStart ?? input.value.length; const end = input.selectionEnd ?? start; input.value = input.value.slice(0,start)+s+input.value.slice(end); input.setSelectionRange(start+s.length, start+s.length); input.focus(); };
+        let lastVal = Number(initialValue) || 0;
         const sanitize = (s) => (/^[0-9+\-*/().\s.]+$/.test(s) ? s : '0');
-        const evaluate = () => {
-            const s = sanitize(input.value.trim());
-            try { const val = Function(`"use strict";return (${s||'0'})`)(); return { val: Number(val), s }; } catch { return { val: NaN, s }; }
+        const evaluate = (sIn) => {
+            const s = sanitize((sIn ?? expr).trim());
+            try { const val = Function('"use strict";return (' + (s||'0') + ')')(); return { val: Number(val), s }; } catch { return { val: NaN, s }; }
         };
-        buttons.forEach(b=>{
+        const render = () => { main.textContent = expr; };
+        render();
+        modal.querySelectorAll('[data-k]').forEach(b=>{
             b.addEventListener('click', ()=>{
                 const k = b.dataset.k;
-                if (k === 'C') { input.value=''; small.textContent=''; return; }
-                if (k === '⌫') { const pos=input.selectionStart??input.value.length; if (pos>0){ input.value=input.value.slice(0,pos-1)+input.value.slice(pos); input.setSelectionRange(pos-1,pos-1);} return; }
-                if (k === '=') { const {val,s} = evaluate(); if (!isNaN(val)) { small.textContent = s; input.value = String(val); } return; }
-                append(k);
+                if (k === 'C') { expr=''; small.textContent=''; render(); return; }
+                if (k === '⌫') { if (expr.length>0){ expr = expr.slice(0,-1); render(); } return; }
+                if (k === '=') { const {val,s} = evaluate(); if (!isNaN(val)) { small.textContent = s; expr = String(val); lastVal = val; render(); } return; }
+                expr += k; render();
             });
         });
-        input.addEventListener('keydown', (e)=>{ if (e.key==='Enter'){ e.preventDefault(); const {val,s}=evaluate(); if (!isNaN(val)){ small.textContent=s; input.value=String(val);} }});
-        setTimeout(()=>{ input.focus(); input.select(); }, 200);
         modal.querySelector('#calcCancel').addEventListener('click', ()=> modal.remove());
-        modal.querySelector('#calcDone').addEventListener('click', ()=> { const {val,s}=evaluate(); if (!isNaN(val) && onApply) onApply(val); modal.remove(); });
+        modal.querySelector('#calcDone').addEventListener('click', ()=> { const {val} = evaluate(); const useVal = isNaN(val) ? lastVal : val; if (onApply) onApply(useVal); modal.remove(); });
     },
 
     showTimeConverter(totalMs) {
