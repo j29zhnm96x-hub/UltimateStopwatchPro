@@ -65,45 +65,21 @@ const AppState = {
     },
     async updateKeepAwakeBinding() {
         // Remove old listeners if any
-        if (this._battery && this._battery.removeEventListener) {
-            this._battery.removeEventListener('chargingchange', this._onChargingChange);
-        }
         document.removeEventListener('visibilitychange', this._onVisibilityChange);
-
+        // Keep screen awake whenever enabled and tab is visible
         if (!AppState.keepAwakeOnCharge) {
             await this.releaseWakeLock();
             return;
         }
-        if (!('getBattery' in navigator)) {
-            // No Battery API (e.g., iOS Safari): enable when visible
-            this._onVisibilityChange = async () => {
-                if (document.visibilityState === 'visible' && AppState.keepAwakeOnCharge) {
-                    await this.requestWakeLock();
-                } else {
-                    await this.releaseWakeLock();
-                }
-            };
-            document.addEventListener('visibilitychange', this._onVisibilityChange);
-            await this._onVisibilityChange();
-            return;
-        }
-        this._battery = await navigator.getBattery();
-        this._onChargingChange = async () => {
-            if (this._battery.charging) {
+        this._onVisibilityChange = async () => {
+            if (document.visibilityState === 'visible' && AppState.keepAwakeOnCharge) {
                 await this.requestWakeLock();
             } else {
                 await this.releaseWakeLock();
             }
         };
-        this._battery.addEventListener('chargingchange', this._onChargingChange);
-        this._onVisibilityChange = async () => {
-            if (document.visibilityState === 'visible' && this._battery.charging && AppState.keepAwakeOnCharge) {
-                await this.requestWakeLock();
-            }
-        };
         document.addEventListener('visibilitychange', this._onVisibilityChange);
-        // Initial apply
-        await this._onChargingChange();
+        await this._onVisibilityChange();
     },
     
     
@@ -230,7 +206,11 @@ const StopwatchManager = {
         if (AppState.countdownIntervalId) { clearTimeout(AppState.countdownIntervalId); AppState.countdownIntervalId = null; }
         AppState.countdownActive = false;
         AppState.countdownSeconds = null;
-        if (AppState.stopwatch.laps.length > 0 && !suppressSave) {
+        if (!suppressSave) {
+            if (AppState.stopwatch.laps.length === 0 && AppState.stopwatch.elapsedTime > 0) {
+                const et = AppState.stopwatch.elapsedTime;
+                AppState.stopwatch.laps.push({ number: 1, time: et, cumulative: et });
+            }
             UI.showSaveDialog();
         }
     },
@@ -345,7 +325,8 @@ const Utils = {
             const o = ctx.createOscillator();
             const g = ctx.createGain();
             o.frequency.value = frequency;
-            g.gain.value = volume;
+            const volScale = (typeof Sound !== 'undefined' && Sound.volumes) ? ((Sound.volumes.master || 1) * (Sound.volumes.sw || 1)) : 1;
+            g.gain.value = volume * volScale;
             o.type = 'sine';
             o.connect(g); g.connect(ctx.destination);
             const now = ctx.currentTime;
@@ -362,7 +343,15 @@ const Sound = {
     clips: {},
     buffers: {},
     _ctx: null,
+    _masterGain: null,
+    _uiGain: null,
+    _swGain: null,
     initialized: false,
+    volumes: {
+        master: Math.max(0, Math.min(1, parseFloat(localStorage.getItem('as_vol_master') || '1'))),
+        ui: Math.max(0, Math.min(1, parseFloat(localStorage.getItem('as_vol_ui') || '1'))),
+        sw: Math.max(0, Math.min(1, parseFloat(localStorage.getItem('as_vol_sw') || '1')))
+    },
     files: {
         start: 'audio/single-tone.mp3',
         resume: 'audio/single-tone.mp3',
@@ -376,7 +365,21 @@ const Sound = {
     init() {
         if (this.initialized) return;
         const Ctx = window.AudioContext || window.webkitAudioContext;
-        if (Ctx) this._ctx = this._ctx || new Ctx();
+        if (Ctx) {
+            this._ctx = this._ctx || new Ctx();
+            // Gain routing: UI -> master, Stopwatch -> master
+            try {
+                this._masterGain = this._ctx.createGain();
+                this._uiGain = this._ctx.createGain();
+                this._swGain = this._ctx.createGain();
+                this._uiGain.connect(this._masterGain);
+                this._swGain.connect(this._masterGain);
+                this._masterGain.connect(this._ctx.destination);
+                this._masterGain.gain.value = this.volumes.master;
+                this._uiGain.gain.value = this.volumes.ui;
+                this._swGain.gain.value = this.volumes.sw;
+            } catch(_) {}
+        }
         for (const [k, src] of Object.entries(this.files)) {
             const a = new Audio(src);
             a.preload = 'auto';
@@ -462,16 +465,37 @@ const Sound = {
             if (this._ctx && this._ctx.state === 'running' && this.buffers[name]) {
                 const src = this._ctx.createBufferSource();
                 src.buffer = this.buffers[name];
-                src.connect(this._ctx.destination);
+                const isUI = (name === 'ui' || name === 'confirm');
+                const target = isUI ? (this._uiGain || this._masterGain || this._ctx.destination) : (this._swGain || this._masterGain || this._ctx.destination);
+                src.connect(target);
                 src.start(0);
             } else {
                 // Fallback to HTMLAudio if WebAudio unavailable or suspended
                 const a = base.cloneNode(true);
+                const isUI = (name === 'ui' || name === 'confirm');
+                const vol = (this.volumes.master || 1) * (isUI ? (this.volumes.ui || 1) : (this.volumes.sw || 1));
                 a.currentTime = 0;
+                a.volume = Math.max(0, Math.min(1, vol));
                 a.play().catch(()=>{});
             }
         } catch {}
     }
+};
+
+// Sound volume helpers
+Sound.setVolume = function(type, value) {
+    const v = Math.max(0, Math.min(1, parseFloat(value)));
+    if (Number.isNaN(v)) return;
+    if (!(type in this.volumes)) return;
+    this.volumes[type] = v;
+    localStorage.setItem('as_vol_' + type, String(v));
+    try {
+        if (this._ctx) {
+            if (type === 'master' && this._masterGain) this._masterGain.gain.value = v;
+            if (type === 'ui' && this._uiGain) this._uiGain.gain.value = v;
+            if (type === 'sw' && this._swGain) this._swGain.gain.value = v;
+        }
+    } catch(_) {}
 };
 
 // Localization tables (core keys). Fallback: English.
@@ -507,7 +531,11 @@ const Locales = {
         'settings.imperial': 'Imperial',
         'settings.currency': 'Currency',
         'settings.power': 'Power',
-        'settings.keepAwake': 'Keep screen awake while charging',
+        'settings.keepAwake': 'Keep screen awake',
+        'settings.audio': 'Audio',
+        'settings.masterVolume': 'Master volume',
+        'settings.uiVolume': 'UI volume',
+        'settings.stopwatchVolume': 'Stopwatch volume',
         'settings.timeDisplay': 'Time Display',
         'settings.hms': 'Hours:Minutes:Seconds',
         'settings.ms': 'Minutes:Seconds',
@@ -641,7 +669,11 @@ const Locales = {
         'settings.imperial': 'Imperijalne',
         'settings.currency': 'Valuta',
         'settings.power': 'Napajanje',
-        'settings.keepAwake': 'Drži zaslon budnim tijekom punjenja',
+        'settings.keepAwake': 'Drži zaslon budnim',
+        'settings.audio': 'Zvuk',
+        'settings.masterVolume': 'Glavna glasnoća',
+        'settings.uiVolume': 'UI glasnoća',
+        'settings.stopwatchVolume': 'Glasnoća štoperice',
         'settings.timeDisplay': 'Prikaz vremena',
         'settings.hms': 'Sati:Minute:Sekunde',
         'settings.ms': 'Minute:Sekunde',
@@ -1636,6 +1668,18 @@ const UI = {
     updateTimeDisplay() {
         const display = document.getElementById('timeDisplay');
         if (display) display.textContent = Utils.formatTime(AppState.stopwatch.elapsedTime);
+        const cl = document.getElementById('currentLapDisplay');
+        if (cl) {
+            if (AppState.stopwatch.isRunning || AppState.stopwatch.isPaused) {
+                const laps = AppState.stopwatch.laps;
+                const prevCum = laps.length > 0 ? laps[laps.length - 1].cumulative : 0;
+                const currentLapTime = AppState.stopwatch.elapsedTime - prevCum;
+                const currentLapNum = laps.length + 1;
+                cl.textContent = this.t('stopwatch.lap') + ' ' + currentLapNum + ': ' + Utils.formatTime(currentLapTime);
+            } else {
+                cl.textContent = '';
+            }
+        }
     },
     
     renderStopwatch() {
@@ -1658,6 +1702,7 @@ const UI = {
             <main>
                 <div class="stopwatch-container">
                     <div class="time-display" id="timeDisplay">${Utils.formatTime(AppState.stopwatch.elapsedTime)}</div>
+                    ${(isRunning || isPaused) ? (()=>{ const prevCum = laps.length>0?laps[laps.length-1].cumulative:0; const cur = AppState.stopwatch.elapsedTime - prevCum; const num = laps.length+1; return `<div class="current-lap" id="currentLapDisplay">${this.t('stopwatch.lap')} ${num}: ${Utils.formatTime(cur)}</div>`;})() : `<div class="current-lap" id="currentLapDisplay"></div>`}
                     <div class="controls">
                         ${!isRunning ? `
                             <div class="controls-stack">
@@ -2106,9 +2151,22 @@ const UI = {
                 newFolderGroup.classList.add('hidden');
             }
         }
+        // If no folders exist, default to creating a new one and focus its name field
+        const foldersExist = (Array.from(folderSelect.options).filter(o => o.value && o.value !== '__new__').length > 0);
+        if (!foldersExist) {
+            folderSelect.value = '__new__';
+            newFolderGroup.classList.remove('hidden');
+            const newFolderInput = modal.querySelector('#newFolderInput');
+            if (newFolderInput) { newFolderInput.focus(); newFolderInput.select(); }
+        }
 
         folderSelect.addEventListener('change', () => {
-            newFolderGroup.classList.toggle('hidden', folderSelect.value !== '__new__');
+            const creating = folderSelect.value === '__new__';
+            newFolderGroup.classList.toggle('hidden', !creating);
+            if (creating) {
+                const nf = modal.querySelector('#newFolderInput');
+                if (nf) { nf.focus(); nf.select(); }
+            }
         });
 
         imageInput.addEventListener('change', async (e) => {
@@ -2126,7 +2184,7 @@ const UI = {
         });
         
         const nameInput = modal.querySelector('#resultNameInput');
-        if (nameInput) { nameInput.focus(); nameInput.select(); }
+        if (nameInput && foldersExist) { nameInput.focus(); nameInput.select(); }
 
         modal.querySelector('#saveResultForm').addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -2346,6 +2404,26 @@ const UI = {
                     </label>
                     <p style="margin:6px 0 0;color:var(--text-secondary);font-size:12px;">${this.t('info.wakeLockNote')}</p>
                 </div>
+                <div class="form-group">
+                    <label class="form-label">${this.t('settings.audio')}</label>
+                    <div class="menu-list">
+                        <div class="menu-item" style="display:flex;align-items:center;gap:12px;">
+                            <div style="min-width:120px;">${this.t('settings.masterVolume')}</div>
+                            <input type="range" id="volMasterRange" min="0" max="1" step="0.01" value="${Sound.volumes.master}" style="flex:1;"/>
+                            <div id="volMasterVal" style="width:38px;text-align:right;">${Math.round(Sound.volumes.master*100)}%</div>
+                        </div>
+                        <div class="menu-item" style="display:flex;align-items:center;gap:12px;">
+                            <div style="min-width:120px;">${this.t('settings.uiVolume')}</div>
+                            <input type="range" id="volUiRange" min="0" max="1" step="0.01" value="${Sound.volumes.ui}" style="flex:1;"/>
+                            <div id="volUiVal" style="width:38px;text-align:right;">${Math.round(Sound.volumes.ui*100)}%</div>
+                        </div>
+                        <div class="menu-item" style="display:flex;align-items:center;gap:12px;">
+                            <div style="min-width:120px;">${this.t('settings.stopwatchVolume')}</div>
+                            <input type="range" id="volSwRange" min="0" max="1" step="0.01" value="${Sound.volumes.sw}" style="flex:1;"/>
+                            <div id="volSwVal" style="width:38px;text-align:right;">${Math.round(Sound.volumes.sw*100)}%</div>
+                        </div>
+                    </div>
+                </div>
             `;
         } else if (view === 'folder') {
             body = `<p>${this.t('settings.projectSettings')}</p>`;
@@ -2413,6 +2491,20 @@ const UI = {
                 }
                 AppState.updateKeepAwakeBinding && AppState.updateKeepAwakeBinding();
             });
+        }
+        // Audio sliders
+        const vm = modal.querySelector('#volMasterRange');
+        const vu = modal.querySelector('#volUiRange');
+        const vs = modal.querySelector('#volSwRange');
+        if (vm && vu && vs) {
+            const sync = () => {
+                modal.querySelector('#volMasterVal').textContent = Math.round(vm.value*100)+'%';
+                modal.querySelector('#volUiVal').textContent = Math.round(vu.value*100)+'%';
+                modal.querySelector('#volSwVal').textContent = Math.round(vs.value*100)+'%';
+            };
+            vm.addEventListener('input', () => { Sound.setVolume('master', vm.value); sync(); });
+            vu.addEventListener('input', () => { Sound.setVolume('ui', vu.value); sync(); });
+            vs.addEventListener('input', () => { Sound.setVolume('sw', vs.value); sync(); });
         }
         // Result view specific handlers
         const remeasureBtn = modal.querySelector('#remeasureItem');
