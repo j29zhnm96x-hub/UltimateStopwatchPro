@@ -1009,6 +1009,36 @@ main {
     padding: 20px;
 }
 
+/* Landscape support for small devices */
 @media screen and (orientation: landscape) and (max-width: 896px) {
-    .orientation-lock { display: flex; }
+    /* Keep overlay hidden in landscape; we want the UI usable */
+    .orientation-lock { display: none; }
+
+    html, body, #app { width: 100vw; height: 100svh; overflow-x: hidden; }
+    header { padding: 12px; }
+    main { padding: 12px; overflow-x: hidden; overflow-y: auto; }
+
+    /* Stopwatch layout: place time and controls side-by-side */
+    .stopwatch-container {
+        flex-direction: row;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: center;
+        gap: 16px;
+        max-width: 100vw;
+    }
+    .time-display { font-size: 42px; }
+    .current-lap { font-size: 20px; }
+
+    .controls { width: auto; gap: 12px; }
+    .controls-stack { width: min(55vw, 420px); max-width: 55vw; }
+    .btn-next-big { aspect-ratio: auto; height: 120px; font-size: 20px; }
+    .controls-row .control-btn { min-width: 120px; }
+
+    /* Result detail: use two columns where possible and limit image height */
+    .result-image { max-height: 40vh; }
+    .result-detail .stats-grid { grid-template-columns: 1fr 1fr; }
+
+    /* FAB: tuck tighter in landscape */
+    .fab-container { bottom: 12px; right: 12px; }
 }
