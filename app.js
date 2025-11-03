@@ -1914,11 +1914,11 @@ const UI = {
                         </div>
                     </div>
                     <div class="stats-grid" style="grid-template-columns: 1fr 1fr;">
-                        <div class="stat-card">
+                        <div class="stat-card" id="fastestCard">
                             <div class="stat-label">${this.t('resultDetail.fastestLap')}</div>
                             <div class="stat-value">${Utils.formatTimeCustom(fastestLapTime, AppState.display.timeMode, AppState.display.showHundredths)}</div>
                         </div>
-                        <div class="stat-card">
+                        <div class="stat-card" id="longestCard">
                             <div class="stat-label">${this.t('resultDetail.longestLap')}</div>
                             <div class="stat-value">${Utils.formatTimeCustom(longestLapTime, AppState.display.timeMode, AppState.display.showHundredths)}</div>
                         </div>
@@ -1941,6 +1941,33 @@ const UI = {
                 </div>
             </main>
         `;
+        const setupLongPress = (el, handler, delay = 1000) => {
+            if (!el) return;
+            let t = null;
+            const start = () => { t = setTimeout(handler, delay); };
+            const clear = () => { if (t) { clearTimeout(t); t = null; } };
+            el.addEventListener('touchstart', start, { passive: true });
+            el.addEventListener('mousedown', start);
+            ['touchend','touchcancel','mouseup','mouseleave'].forEach(ev => el.addEventListener(ev, clear));
+        };
+        const highlightLap = (idx) => {
+            const lapEl = this.app.querySelector(`.lap-item[data-lap-index="${idx}"]`);
+            if (!lapEl) return;
+            lapEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            lapEl.classList.add('lap-highlight');
+            setTimeout(()=> lapEl.classList.remove('lap-highlight'), 2200);
+        };
+        const fIdx = (result.laps && result.laps.length) ? result.laps.findIndex(l => l.time === fastestLapTime) : -1;
+        const lIdx = (result.laps && result.laps.length) ? result.laps.findIndex(l => l.time === longestLapTime) : -1;
+        setupLongPress(this.app.querySelector('#fastestCard'), () => { if (fIdx >= 0) highlightLap(fIdx); });
+        setupLongPress(this.app.querySelector('#longestCard'), () => { if (lIdx >= 0) highlightLap(lIdx); });
+
+        this.app.querySelectorAll('.lap-item').forEach((el) => {
+            const idx = parseInt(el.getAttribute('data-lap-index'));
+            setupLongPress(el, () => {
+                this.showRemoveLapDialog(result.id, idx);
+            }, 1000);
+        });
         
             },
     
@@ -2298,7 +2325,7 @@ const UI = {
                     <div style="display:flex;gap:8px;align-items:center;">
                         <input type="number" inputmode="numeric" class="form-input" id="hoursInput" min="0" max="23" placeholder="0" value="1" style="width:80px;" />
                         <span>${this.t('label.h')}</span>
-                        <input type="number" inputmode="numeric" class="form-input" id="minutesInput" min="0" max="59" placeholder="0" value="30" style="width:80px;" />
+                        <input type="number" inputmode="numeric" class="form-input" id="minutesInput" min="0" max="59" placeholder="0" value="0" style="width:80px;" />
                         <span>${this.t('label.m')}</span>
                         <input type="number" inputmode="numeric" class="form-input" id="secondsInput" min="0" max="59" placeholder="0" value="0" style="width:80px;" />
                         <span>${this.t('label.s')}</span>
@@ -2337,9 +2364,11 @@ const UI = {
             });
         });
         
+        let lastQuantityTotalMs = 0;
         modal.querySelector('#calcQuantityBtn').addEventListener('click', () => {
             const quantity = parseInt(modal.querySelector('#quantityInput').value);
             const totalMs = quantity * avgLapTime;
+            lastQuantityTotalMs = totalMs;
             modal.querySelector('#quantityValue').textContent = Utils.formatTime(totalMs);
             modal.querySelector('#quantityResult').classList.remove('hidden');
         });
@@ -2358,7 +2387,7 @@ const UI = {
             minutesEl.value = m;
             secondsEl.value = s;
             const totalMs = h*3600000 + m*60000 + s*1000;
-            previewEl.textContent = Utils.formatTime(totalMs);
+            previewEl.textContent = Utils.formatTimeCustom(totalMs, 'hms', false);
             return totalMs;
         };
         [hoursEl, minutesEl, secondsEl].forEach(el => {
@@ -2367,17 +2396,21 @@ const UI = {
         });
         updatePreview();
 
+        let lastEstimatedQuantity = null;
         modal.querySelector('#calcTimeBtn').addEventListener('click', () => {
             const totalMs = updatePreview();
             const quantity = Math.floor(totalMs / avgLapTime);
-            modal.querySelector('#timeValue').textContent = quantity;
+            lastEstimatedQuantity = quantity;
+            modal.querySelector('#timeValue').textContent = String(quantity);
             modal.querySelector('#timeResult').classList.remove('hidden');
         });
         
+        let lastPriceValue = null;
         modal.querySelector('#calcPriceBtn').addEventListener('click', () => {
             const wage = parseFloat(modal.querySelector('#wageInput').value);
             if (wage) {
                 const pricePerPiece = (wage / 3600) * avgSeconds;
+                lastPriceValue = pricePerPiece;
                 modal.querySelector('#priceValue').textContent = AppState.currency + ' ' + pricePerPiece.toFixed(4);
                 modal.querySelector('#priceResult').classList.remove('hidden');
                 DataManager.updateResult(result.id, { hourlyWage: wage });
@@ -2385,6 +2418,126 @@ const UI = {
         });
         
         modal.querySelector('#closeCalcBtn').addEventListener('click', () => modal.remove());
+
+        // Long-press helpers
+        const setupLongPress = (el, handler, delay = 650) => {
+            if (!el) return;
+            let t = null, moved = false;
+            const start = (e) => { moved = false; t = setTimeout(() => handler(e), delay); };
+            const clear = () => { if (t) { clearTimeout(t); t = null; } };
+            const move = () => { moved = true; clear(); };
+            el.addEventListener('touchstart', start, { passive: true });
+            el.addEventListener('mousedown', start);
+            el.addEventListener('touchend', clear);
+            el.addEventListener('touchcancel', clear);
+            el.addEventListener('mouseup', clear);
+            el.addEventListener('mouseleave', clear);
+            el.addEventListener('touchmove', move, { passive: true });
+        };
+
+        // Time panel: long-press estimated quantity -> numeric calculator
+        setupLongPress(modal.querySelector('#timeValue'), () => {
+            const initial = (lastEstimatedQuantity != null) ? lastEstimatedQuantity : parseFloat(modal.querySelector('#timeValue').textContent || '0') || 0;
+            this.showNumericCalculator(initial, (val) => {
+                lastEstimatedQuantity = Math.max(0, Math.floor(val));
+                modal.querySelector('#timeValue').textContent = String(lastEstimatedQuantity);
+            }, this.t('calc.tab.time'));
+        });
+
+        // Price panel: long-press price -> numeric calculator
+        setupLongPress(modal.querySelector('#priceValue'), () => {
+            const txt = modal.querySelector('#priceValue').textContent || '';
+            const num = (lastPriceValue != null) ? lastPriceValue : parseFloat(txt.replace(/[^0-9.\-]/g, '')) || 0;
+            this.showNumericCalculator(num, (val) => {
+                lastPriceValue = Math.max(0, val);
+                modal.querySelector('#priceValue').textContent = AppState.currency + ' ' + lastPriceValue.toFixed(4);
+            }, this.t('calc.tab.price'));
+        });
+
+        // Quantity panel: long-press estimated total time -> converter
+        setupLongPress(modal.querySelector('#quantityValue'), () => {
+            const ms = lastQuantityTotalMs || 0;
+            if (ms > 0) {
+                this.showTimeConverter(ms);
+            }
+        });
+    },
+
+    showNumericCalculator(initialValue = 0, onApply = null, title = 'Calculator') {
+        const modal = this.createModal(title, `
+            <div style="display:flex;flex-direction:column;gap:12px;">
+                <div style="font-size:12px;color:var(--text-secondary);min-height:18px;" id="calcExprSmall"></div>
+                <input type="text" id="calcInput" class="form-input" inputmode="decimal" style="font-size:24px;font-weight:700;text-align:right;" />
+                <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;">
+                    ${['7','8','9','/','4','5','6','*','1','2','3','-','0','.','(',')','C','⌫','+','='].map(k=>`<button type="button" class="btn btn-secondary" data-k="${k}">${k}</button>`).join('')}
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-secondary" id="calcCancel">${this.t('action.cancel')}</button>
+                    <button type="button" class="btn btn-success" id="calcDone">${this.t('action.save')}</button>
+                </div>
+            </div>
+        `, { closeOnOutside: false });
+        modal.querySelector('.modal-content')?.classList.add('pop-animate');
+        const input = modal.querySelector('#calcInput');
+        const small = modal.querySelector('#calcExprSmall');
+        let expr = String(initialValue);
+        input.value = expr;
+        const buttons = modal.querySelectorAll('[data-k]');
+        const append = (s) => { const start = input.selectionStart ?? input.value.length; const end = input.selectionEnd ?? start; input.value = input.value.slice(0,start)+s+input.value.slice(end); input.setSelectionRange(start+s.length, start+s.length); input.focus(); };
+        const sanitize = (s) => (/^[0-9+\-*/().\s.]+$/.test(s) ? s : '0');
+        const evaluate = () => {
+            const s = sanitize(input.value.trim());
+            try { const val = Function(`"use strict";return (${s||'0'})`)(); return { val: Number(val), s }; } catch { return { val: NaN, s }; }
+        };
+        buttons.forEach(b=>{
+            b.addEventListener('click', ()=>{
+                const k = b.dataset.k;
+                if (k === 'C') { input.value=''; small.textContent=''; return; }
+                if (k === '⌫') { const pos=input.selectionStart??input.value.length; if (pos>0){ input.value=input.value.slice(0,pos-1)+input.value.slice(pos); input.setSelectionRange(pos-1,pos-1);} return; }
+                if (k === '=') { const {val,s} = evaluate(); if (!isNaN(val)) { small.textContent = s; input.value = String(val); } return; }
+                append(k);
+            });
+        });
+        input.addEventListener('keydown', (e)=>{ if (e.key==='Enter'){ e.preventDefault(); const {val,s}=evaluate(); if (!isNaN(val)){ small.textContent=s; input.value=String(val);} }});
+        setTimeout(()=>{ input.focus(); input.select(); }, 200);
+        modal.querySelector('#calcCancel').addEventListener('click', ()=> modal.remove());
+        modal.querySelector('#calcDone').addEventListener('click', ()=> { const {val,s}=evaluate(); if (!isNaN(val) && onApply) onApply(val); modal.remove(); });
+    },
+
+    showTimeConverter(totalMs) {
+        const modal = this.createModal('Convert Time', `
+            <div style="display:flex;flex-direction:column;gap:12px;">
+                <label class="form-label">Convert to</label>
+                <select id="convUnit" class="form-select">
+                    <option value="seconds">Seconds</option>
+                    <option value="minutes">Minutes</option>
+                    <option value="hours">Hours</option>
+                    <option value="days">Days</option>
+                </select>
+                <div class="calc-result" style="display:block;">
+                    <div class="calc-result-label">Result</div>
+                    <div class="calc-result-value" id="convValue" style="font-size:32px;"></div>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-secondary" id="convClose">${this.t('action.close')}</button>
+                </div>
+            </div>
+        `, { closeOnOutside: true });
+        modal.querySelector('.modal-content')?.classList.add('pop-animate');
+        const sel = modal.querySelector('#convUnit');
+        const out = modal.querySelector('#convValue');
+        const fmt = () => {
+            const v = sel.value;
+            let num = 0;
+            if (v==='seconds') num = totalMs/1000;
+            else if (v==='minutes') num = totalMs/60000;
+            else if (v==='hours') num = totalMs/3600000;
+            else if (v==='days') num = totalMs/86400000;
+            out.textContent = num.toFixed(3).replace(/\.000$/, '');
+        };
+        sel.addEventListener('change', fmt);
+        fmt();
+        modal.querySelector('#convClose').addEventListener('click', ()=> modal.remove());
     },
 
     showSettingsDialog() {
