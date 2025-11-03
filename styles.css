@@ -389,6 +389,20 @@ main {
     min-width: 0; /* allow full stretch to match big button width */
 }
 
+/* Generic two-pane layout (stacks on portrait, splits on landscape) */
+.two-pane {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 16px;
+}
+.pane-left,
+.pane-right {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    min-width: 0; /* prevent overflow when shrinking */
+}
+
 /* Laps */
 .laps-container {
     width: 100%;
@@ -635,6 +649,11 @@ main {
     box-shadow: 0 8px 32px var(--shadow);
 }
 
+/* Wide modal variant (e.g., calculator split layout) */
+.modal-content.wide {
+    max-width: min(92vw, 720px);
+}
+
 /* Pop-in animation for lovely entrance */
 .modal-content.pop-animate {
     animation: modalPopIn 260ms cubic-bezier(0.18, 0.89, 0.32, 1.28);
@@ -776,6 +795,22 @@ main {
     color: var(--accent);
 }
 
+/* Calculator split layout */
+.calc-layout {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 12px;
+}
+.calc-panel { display: flex; flex-direction: column; gap: 12px; }
+.calc-keys-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(56px, 1fr));
+    gap: 8px;
+}
+.calc-keys-grid .btn { height: 54px; font-size: 18px; }
+/* Live preview of calculator result */
+.calc-live { font-size: 18px; color: var(--text-secondary); text-align: right; min-height: 20px; }
+
 /* Empty State */
 .empty-state {
     text-align: center;
@@ -841,6 +876,17 @@ main {
     .modal-content {
         max-width: 600px;
     }
+
+    .calc-layout {
+        grid-template-columns: auto 1fr; /* keypad left, display right on wider screens */
+    }
+}
+
+/* Prefer split calc layout on landscape, even on phones */
+@media screen and (orientation: landscape) {
+    .modal-content.wide { max-width: min(96vw, 820px); }
+    .calc-layout { grid-template-columns: minmax(220px, 0.9fr) 1.1fr; gap: 16px; }
+    #calcMain { font-size: 36px; }
 }
 
 /* Touch Feedback */
@@ -1018,6 +1064,11 @@ main {
     header { padding: 12px; }
     main { padding: 12px; overflow-x: hidden; overflow-y: auto; }
 
+    /* Generic two-pane split */
+    .two-pane { grid-template-columns: 1.1fr 1fr; align-items: start; }
+    .stopwatch-container.two-pane { grid-template-columns: 1.2fr 1fr; }
+    .result-detail.two-pane { grid-template-columns: 0.9fr 1.1fr; }
+
     /* Stopwatch layout: place time and controls side-by-side */
     .stopwatch-container {
         flex-direction: row;
@@ -1029,6 +1080,7 @@ main {
     }
     .time-display { font-size: 42px; }
     .current-lap { font-size: 20px; }
+    .pane-right .current-lap { text-align: left; margin-bottom: 8px; }
 
     .controls { width: auto; gap: 12px; }
     .controls-stack { width: min(55vw, 420px); max-width: 55vw; }
@@ -1038,6 +1090,7 @@ main {
     /* Result detail: use two columns where possible and limit image height */
     .result-image { max-height: 40vh; }
     .result-detail .stats-grid { grid-template-columns: 1fr 1fr; }
+    .pane-right .laps-list { max-height: calc(100svh - 220px); overflow-y: auto; }
 
     /* FAB: tuck tighter in landscape */
     .fab-container { bottom: 12px; right: 12px; }

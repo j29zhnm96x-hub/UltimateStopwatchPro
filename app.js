@@ -1726,69 +1726,73 @@ const UI = {
                 </div>
             </header>
             <main>
-                <div class="stopwatch-container">
-                    <div class="time-display" id="timeDisplay">${Utils.formatTimeCustom(AppState.stopwatch.elapsedTime, AppState.display.timeMode, AppState.display.showHundredths)}</div>
-                    ${(isRunning || isPaused) ? (()=>{ const prevCum = laps.length>0?laps[laps.length-1].cumulative:0; const cur = AppState.stopwatch.elapsedTime - prevCum; const num = laps.length+1; return `<div class="current-lap" id="currentLapDisplay">${this.t('stopwatch.lap')} ${num}: ${Utils.formatTimeCustom(cur, AppState.display.timeMode, AppState.display.showHundredths)}</div>`;})() : `<div class="current-lap" id="currentLapDisplay"></div>`}
-                    <div class="controls">
-                        ${!isRunning ? `
-                            <div class="controls-stack">
-                                <button class="btn btn-primary control-btn ${AppState.countdownSeconds ? 'pulse' : ''}" id="startBtn">${this.t('action.start')}${AppState.countdownSeconds ? ` (${AppState.countdownSeconds}${this.t('label.s')})` : ''}</button>
-                                <div class="controls-row" style="margin-top:8px;justify-content:center;gap:10px;">
-                                    <button class="icon-btn" id="countdownBtn" title="${this.t('tooltip.countdown')}" style="transform:scale(1.25);">
-                                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                            <path d="M9 2h6"/>
-                                            <circle cx="12" cy="12" r="9"/>
-                                            <path d="M12 12 L16 9 L13 15 Z" fill="currentColor" stroke="none"/>
-                                        </svg>
-                                    </button>
-                                </div>
-                                <div class="controls-row" style="margin-top:8px;justify-content:center;gap:10px;">
-                                    <button class="icon-btn ${AppState.voice && AppState.voice.enabled ? 'active' : ''}" id="voiceToggle" title="${this.t('tooltip.voice')}">
-                                        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                            <path d="M12 1v5"/>
-                                            <rect x="9" y="6" width="6" height="10" rx="3"/>
-                                            <path d="M5 11v1a7 7 0 0 0 14 0v-1"/>
-                                        </svg>
-                                    </button>
-                                </div>
-                            </div>
-                        ` : isPaused ? `
-                            <div class="controls-stack">
-                                <button class="btn btn-success control-btn btn-next-big" id="resumeBtn">${this.t('action.resume')}</button>
-                                <div class="controls-row">
-                                    <button class="btn btn-secondary control-btn" id="resetBtn">${this.t('action.reset')}</button>
-                                </div>
-                            </div>
-                        ` : `
-                            <div class="controls-stack">
-                                <button class="btn btn-primary control-btn btn-next-big" id="lapBtn">${this.t('action.next')}</button>
-                                <div class="controls-row">
-                                    <button class="btn control-btn" id="pauseBtn" style="background: var(--warning); color: white;">${this.t('action.pause')}</button>
-                                    <button class="btn btn-danger control-btn" id="stopBtn">${this.t('action.stop')}</button>
-                                </div>
-                            </div>
-                        `}
-                        ${(!isRunning && laps.length > 0) ? `<button class="btn btn-danger control-btn" id="resetBtn">${this.t('action.reset')}</button>` : ''}
-                    </div>
-                    ${laps.length > 0 ? `
-                        <div class="laps-container">
-                            <div class="laps-header">
-                                <span>${this.t('stopwatch.laps')} (${laps.length})</span>
-                                <span>${this.t('stopwatch.avg')}: ${Utils.formatTime(Utils.calculateAverage(laps))}</span>
-                            </div>
-                            <div class="laps-list">
-                                ${laps.slice().reverse().map(lap => `
-                                    <div class="lap-item">
-                                        <div class="lap-number">${this.t('stopwatch.lap')} ${lap.number}</div>
-                                        <div class="lap-times">
-                                            <div class="lap-time">${Utils.formatTime(lap.time)}</div>
-                                            <div class="lap-cumulative">${Utils.formatTime(lap.cumulative)}</div>
-                                        </div>
+                <div class="stopwatch-container two-pane">
+                    <div class="pane-left">
+                        <div class="time-display" id="timeDisplay">${Utils.formatTimeCustom(AppState.stopwatch.elapsedTime, AppState.display.timeMode, AppState.display.showHundredths)}</div>
+                        <div class="controls">
+                            ${!isRunning ? `
+                                <div class="controls-stack">
+                                    <button class="btn btn-primary control-btn ${AppState.countdownSeconds ? 'pulse' : ''}" id="startBtn">${this.t('action.start')}${AppState.countdownSeconds ? ` (${AppState.countdownSeconds}${this.t('label.s')})` : ''}</button>
+                                    <div class="controls-row" style="margin-top:8px;justify-content:center;gap:10px;">
+                                        <button class="icon-btn" id="countdownBtn" title="${this.t('tooltip.countdown')}" style="transform:scale(1.25);">
+                                            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                <path d="M9 2h6"/>
+                                                <circle cx="12" cy="12" r="9"/>
+                                                <path d="M12 12 L16 9 L13 15 Z" fill="currentColor" stroke="none"/>
+                                            </svg>
+                                        </button>
                                     </div>
-                                `).join('')}
-                            </div>
+                                    <div class="controls-row" style="margin-top:8px;justify-content:center;gap:10px;">
+                                        <button class="icon-btn ${AppState.voice && AppState.voice.enabled ? 'active' : ''}" id="voiceToggle" title="${this.t('tooltip.voice')}">
+                                            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                <path d="M12 1v5"/>
+                                                <rect x="9" y="6" width="6" height="10" rx="3"/>
+                                                <path d="M5 11v1a7 7 0 0 0 14 0v-1"/>
+                                            </svg>
+                                        </button>
+                                    </div>
+                                </div>
+                            ` : isPaused ? `
+                                <div class="controls-stack">
+                                    <button class="btn btn-success control-btn btn-next-big" id="resumeBtn">${this.t('action.resume')}</button>
+                                    <div class="controls-row">
+                                        <button class="btn btn-secondary control-btn" id="resetBtn">${this.t('action.reset')}</button>
+                                    </div>
+                                </div>
+                            ` : `
+                                <div class="controls-stack">
+                                    <button class="btn btn-primary control-btn btn-next-big" id="lapBtn">${this.t('action.next')}</button>
+                                    <div class="controls-row">
+                                        <button class="btn control-btn" id="pauseBtn" style="background: var(--warning); color: white;">${this.t('action.pause')}</button>
+                                        <button class="btn btn-danger control-btn" id="stopBtn">${this.t('action.stop')}</button>
+                                    </div>
+                                </div>
+                            `}
+                            ${(!isRunning && laps.length > 0) ? `<button class="btn btn-danger control-btn" id="resetBtn">${this.t('action.reset')}</button>` : ''}
                         </div>
-                    ` : ''}
+                    </div>
+                    <div class="pane-right">
+                        ${(isRunning || isPaused) ? (()=>{ const prevCum = laps.length>0?laps[laps.length-1].cumulative:0; const cur = AppState.stopwatch.elapsedTime - prevCum; const num = laps.length+1; return `<div class="current-lap" id="currentLapDisplay">${this.t('stopwatch.lap')} ${num}: ${Utils.formatTimeCustom(cur, AppState.display.timeMode, AppState.display.showHundredths)}</div>`;})() : `<div class="current-lap" id="currentLapDisplay"></div>`}
+                        ${laps.length > 0 ? `
+                            <div class="laps-container">
+                                <div class="laps-header">
+                                    <span>${this.t('stopwatch.laps')} (${laps.length})</span>
+                                    <span>${this.t('stopwatch.avg')}: ${Utils.formatTime(Utils.calculateAverage(laps))}</span>
+                                </div>
+                                <div class="laps-list">
+                                    ${laps.slice().reverse().map(lap => `
+                                        <div class="lap-item">
+                                            <div class="lap-number">${this.t('stopwatch.lap')} ${lap.number}</div>
+                                            <div class="lap-times">
+                                                <div class="lap-time">${Utils.formatTime(lap.time)}</div>
+                                                <div class="lap-cumulative">${Utils.formatTime(lap.cumulative)}</div>
+                                            </div>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        ` : ''}
+                    </div>
                 </div>
             </main>
         `;
@@ -1901,45 +1905,49 @@ const UI = {
                 </div>
             </header>
             <main>
-                <div class="result-detail">
-                    ${result.image ? `<img src="${result.image}" alt="Result image" class="result-image">` : ''}
-                    <div class="stats-grid">
-                        <div class="stat-card">
-                            <div class="stat-label">${this.t('resultDetail.totalTime')}</div>
-                            <div class="stat-value">${Utils.formatTimeCustom(result.totalTime, AppState.display.timeMode, AppState.display.showHundredths)}</div>
+                <div class="result-detail two-pane">
+                    <div class="pane-left">
+                        ${result.image ? `<img src="${result.image}" alt="Result image" class="result-image">` : ''}
+                        <div class="stats-grid">
+                            <div class="stat-card">
+                                <div class="stat-label">${this.t('resultDetail.totalTime')}</div>
+                                <div class="stat-value">${Utils.formatTimeCustom(result.totalTime, AppState.display.timeMode, AppState.display.showHundredths)}</div>
+                            </div>
+                            <div class="stat-card stat-laps">
+                                <div class="stat-label">${this.t('stopwatch.laps')}</div>
+                                <div class="stat-value">${result.laps.length}</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-label">${this.t('stopwatch.avgLap')}</div>
+                                <div class="stat-value">${Utils.formatTimeCustom(avgLapTime, AppState.display.timeMode, AppState.display.showHundredths)}</div>
+                            </div>
                         </div>
-                        <div class="stat-card stat-laps">
-                            <div class="stat-label">${this.t('stopwatch.laps')}</div>
-                            <div class="stat-value">${result.laps.length}</div>
+                        <div class="stats-grid" style="grid-template-columns: 1fr 1fr;">
+                            <div class="stat-card" id="fastestCard">
+                                <div class="stat-label">${this.t('resultDetail.fastestLap')}</div>
+                                <div class="stat-value">${Utils.formatTimeCustom(fastestLapTime, AppState.display.timeMode, AppState.display.showHundredths)}</div>
+                            </div>
+                            <div class="stat-card" id="longestCard">
+                                <div class="stat-label">${this.t('resultDetail.longestLap')}</div>
+                                <div class="stat-value">${Utils.formatTimeCustom(longestLapTime, AppState.display.timeMode, AppState.display.showHundredths)}</div>
+                            </div>
                         </div>
-                        <div class="stat-card">
-                            <div class="stat-label">${this.t('stopwatch.avgLap')}</div>
-                            <div class="stat-value">${Utils.formatTimeCustom(avgLapTime, AppState.display.timeMode, AppState.display.showHundredths)}</div>
-                        </div>
+                        <button class="btn btn-primary btn-block" id="calculateBtn">${this.t('action.calculate')}</button>
                     </div>
-                    <div class="stats-grid" style="grid-template-columns: 1fr 1fr;">
-                        <div class="stat-card" id="fastestCard">
-                            <div class="stat-label">${this.t('resultDetail.fastestLap')}</div>
-                            <div class="stat-value">${Utils.formatTimeCustom(fastestLapTime, AppState.display.timeMode, AppState.display.showHundredths)}</div>
-                        </div>
-                        <div class="stat-card" id="longestCard">
-                            <div class="stat-label">${this.t('resultDetail.longestLap')}</div>
-                            <div class="stat-value">${Utils.formatTimeCustom(longestLapTime, AppState.display.timeMode, AppState.display.showHundredths)}</div>
-                        </div>
-                    </div>
-                    <button class="btn btn-primary btn-block" id="calculateBtn">${this.t('action.calculate')}</button>
-                    <div class="laps-container">
-                        <div class="laps-header">${this.t('stopwatch.allLaps')}</div>
-                        <div class="laps-list">
-                            ${result.laps.map((lap, idx) => `
-                                <div class="lap-item" data-lap-index="${idx}" data-result-id="${result.id}">
-                                    <div class="lap-number">${this.t('stopwatch.lap')} ${lap.number}</div>
-                                    <div class="lap-times">
-                                        <div class="lap-time">${Utils.formatTime(lap.time)}</div>
-                                        <div class="lap-cumulative">${Utils.formatTime(lap.cumulative)}</div>
+                    <div class="pane-right">
+                        <div class="laps-container">
+                            <div class="laps-header">${this.t('stopwatch.allLaps')}</div>
+                            <div class="laps-list">
+                                ${result.laps.map((lap, idx) => `
+                                    <div class="lap-item" data-lap-index="${idx}" data-result-id="${result.id}">
+                                        <div class="lap-number">${this.t('stopwatch.lap')} ${lap.number}</div>
+                                        <div class="lap-times">
+                                            <div class="lap-time">${Utils.formatTime(lap.time)}</div>
+                                            <div class="lap-cumulative">${Utils.formatTime(lap.cumulative)}</div>
+                                        </div>
                                     </div>
-                                </div>
-                            `).join('')}
+                                `).join('')}
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -2502,20 +2510,26 @@ const UI = {
 
     showNumericCalculator(initialValue = 0, onApply = null, title = 'Calculator') {
         const modal = this.createModal(title, `
-            <div style="display:flex;flex-direction:column;gap:12px;">
-                <div id="calcExprSmall" style="font-size:12px;color:var(--text-secondary);min-height:18px;text-align:right;"></div>
-                <div id="calcMain" style="font-size:28px;font-weight:700;text-align:right;padding:8px 12px;border-radius:8px;background:var(--bg-secondary);"></div>
-                <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;">
-                    ${['7','8','9','/','4','5','6','*','1','2','3','-','0','.','(',')','C','⌫','+','='].map(k=>`<button type=\"button\" class=\"btn btn-secondary\" data-k=\"${k}\">${k}</button>`).join('')}
+            <div class="calc-layout">
+                <div class="calc-panel calc-left">
+                    <div class="calc-keys-grid">
+                        ${['7','8','9','/','4','5','6','*','1','2','3','-','0','.','(',')','C','⌫','+','='].map(k=>`<button type=\"button\" class=\"btn btn-secondary\" data-k=\"${k}\">${k}</button>`).join('')}
+                    </div>
+                    <div class="modal-actions">
+                        <button type="button" class="btn btn-secondary" id="calcBack">${this.t('action.close')}</button>
+                    </div>
                 </div>
-                <div class="modal-actions">
-                    <button type="button" class="btn btn-secondary" id="calcBack">${this.t('action.close')}</button>
+                <div class="calc-panel calc-right">
+                    <div id="calcExprSmall" style="font-size:12px;color:var(--text-secondary);min-height:18px;text-align:right;"></div>
+                    <div id="calcMain" style="font-size:28px;font-weight:700;text-align:right;padding:8px 12px;border-radius:8px;background:var(--bg-secondary);"></div>
+                    <div id="calcLive" class="calc-live"></div>
                 </div>
             </div>
         `, { closeOnOutside: false });
-        modal.querySelector('.modal-content')?.classList.add('pop-animate');
+        modal.querySelector('.modal-content')?.classList.add('pop-animate','wide');
         const small = modal.querySelector('#calcExprSmall');
         const main = modal.querySelector('#calcMain');
+        const live = modal.querySelector('#calcLive');
         let expr = String(initialValue);
         let lastVal = Number(initialValue) || 0;
         const sanitize = (s) => (/^[0-9+\-*/().\s.]+$/.test(s) ? s : '0');
@@ -2523,7 +2537,17 @@ const UI = {
             const s = sanitize((sIn ?? expr).trim());
             try { const val = Function('"use strict";return (' + (s||'0') + ')')(); return { val: Number(val), s }; } catch { return { val: NaN, s }; }
         };
-        const render = () => { main.textContent = expr; };
+        const render = () => {
+            main.textContent = expr;
+            small.textContent = expr;
+            const { val } = evaluate();
+            if (!isNaN(val)) {
+                const pv = parseFloat(val.toFixed(2));
+                if (live) live.textContent = '≈ ' + pv.toString();
+            } else {
+                if (live) live.textContent = '';
+            }
+        };
         render();
         modal.querySelectorAll('[data-k]').forEach(b=>{
             b.addEventListener('click', ()=>{
