@@ -821,7 +821,14 @@ const UI = {
         window.addEventListener('pointerdown', aggressiveUnlock, { once: true, passive: true });
         window.addEventListener('touchstart', aggressiveUnlock, { once: true, passive: true });
         window.addEventListener('click', aggressiveUnlock, { once: true });
-        try { if (screen.orientation && screen.orientation.lock) { screen.orientation.lock('portrait').catch(()=>{}); } } catch(_) {}
+        // Orientation lock for mobile devices (requires user gesture)
+        const lockOrientation = () => {
+            if (screen.orientation && typeof screen.orientation.lock === 'function') {
+                screen.orientation.lock('portrait-primary').catch(() => {});
+            }
+        };
+        window.addEventListener('touchstart', lockOrientation, { once: true, passive: true });
+        window.addEventListener('click', lockOrientation, { once: true });
         this.applyLanguage();
         this.renderHome();
     },
@@ -973,7 +980,7 @@ const UI = {
         `;
     },
     getHelpIcon() {
-        return '?';
+        return '<span style="font-size:24px;">?</span>';
     },
 
     async startCountdown(seconds) {
@@ -2523,7 +2530,7 @@ const UI = {
                 const k = b.dataset.k;
                 if (k === 'C') { expr=''; small.textContent=''; render(); return; }
                 if (k === '⌫') { if (expr.length>0){ expr = expr.slice(0,-1); render(); } return; }
-                if (k === '=') { const {val,s} = evaluate(); if (!isNaN(val)) { small.textContent = s; expr = String(val); lastVal = val; render(); } return; }
+                if (k === '=') { const {val,s} = evaluate(); if (!isNaN(val)) { small.textContent = s; const fmtVal = parseFloat(val.toFixed(2)); expr = fmtVal.toString(); lastVal = fmtVal; render(); } return; }
                 expr += k; render();
             });
         });
