@@ -338,6 +338,14 @@ main {
     text-shadow: 0 2px 8px var(--shadow);
 }
 
+.current-lap {
+    font-size: 28px; /* half of 56px */
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    text-align: center;
+    color: var(--warning);
+}
+
 .controls {
     display: flex;
     gap: 16px;
@@ -798,6 +806,7 @@ main {
     .time-display {
         font-size: 72px;
     }
+    .current-lap { font-size: 36px; }
     
     .folders-grid {
         grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));

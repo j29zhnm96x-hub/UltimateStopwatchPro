@@ -206,8 +206,8 @@ const StopwatchManager = {
         if (AppState.countdownIntervalId) { clearTimeout(AppState.countdownIntervalId); AppState.countdownIntervalId = null; }
         AppState.countdownActive = false;
         AppState.countdownSeconds = null;
-        if (!suppressSave) {
-            if (AppState.stopwatch.laps.length === 0 && AppState.stopwatch.elapsedTime > 0) {
+        if (!suppressSave && (AppState.stopwatch.elapsedTime > 0 || AppState.stopwatch.laps.length > 0)) {
+            if (AppState.stopwatch.laps.length === 0) {
                 const et = AppState.stopwatch.elapsedTime;
                 AppState.stopwatch.laps.push({ number: 1, time: et, cumulative: et });
             }
@@ -569,8 +569,13 @@ const Locales = {
         'save.attachImage': 'Attach Image (Optional)',
         'menu.chooseProjectColor': 'Choose Project Color',
         'menu.chooseProjectTextColor': 'Choose Project Text Color',
+        'menu.rename': 'Rename',
         'menu.delete': 'Delete',
         'resultDetail.totalTime': 'Total Time',
+        'resultDetail.fastestLap': 'Fastest lap',
+        'resultDetail.longestLap': 'Longest lap',
+        'rename.title': 'Rename Result',
+        'rename.name': 'Result name',
         'confirm.deleteProject': 'Delete this project and all its results?',
         'confirm.deleteResult': 'Delete this result?',
         'confirm.stopSession': 'Stop the current session?',
@@ -707,8 +712,13 @@ const Locales = {
         'save.attachImage': 'Priloži sliku (neobavezno)',
         'menu.chooseProjectColor': 'Odaberi boju projekta',
         'menu.chooseProjectTextColor': 'Odaberi boju teksta projekta',
+        'menu.rename': 'Preimenuj',
         'menu.delete': 'Izbriši',
         'resultDetail.totalTime': 'Ukupno vrijeme',
+        'resultDetail.fastestLap': 'Najbrži krug',
+        'resultDetail.longestLap': 'Najdulji krug',
+        'rename.title': 'Preimenuj rezultat',
+        'rename.name': 'Naziv rezultata',
         'confirm.deleteProject': 'Obrisati ovaj projekt i sve njegove rezultate?',
         'confirm.deleteResult': 'Obrisati ovaj rezultat?',
         'confirm.stopSession': 'Zaustaviti trenutno mjerenje?',
@@ -1418,6 +1428,9 @@ const UI = {
                         this.closeResultMenu();
                         this.renderFolderView(AppState.currentFolder);
                     }
+                } else if (action === 'rename' && rid) {
+                    this.closeResultMenu();
+                    this.showRenameResultDialog(rid);
                 }
                 return;
             }
@@ -1530,6 +1543,17 @@ const UI = {
     handleBackClick() {
         switch (AppState.currentView) {
             case 'stopwatch':
+                // If Save dialog is open, treat back as cancel (once) and exit without re-prompting
+                {
+                    const saveForm = document.querySelector('#saveResultForm');
+                    if (saveForm) {
+                        const modal = saveForm.closest('.modal');
+                        if (modal) modal.remove();
+                        StopwatchManager.reset(true);
+                        this.renderHome();
+                        break;
+                    }
+                }
                 if (AppState.stopwatch.isRunning && !confirm(this.t('confirm.stopSession'))) return;
                 StopwatchManager.reset();
                 this.renderHome();
@@ -1667,7 +1691,7 @@ const UI = {
     
     updateTimeDisplay() {
         const display = document.getElementById('timeDisplay');
-        if (display) display.textContent = Utils.formatTime(AppState.stopwatch.elapsedTime);
+        if (display) display.textContent = Utils.formatTimeCustom(AppState.stopwatch.elapsedTime, AppState.display.timeMode, AppState.display.showHundredths);
         const cl = document.getElementById('currentLapDisplay');
         if (cl) {
             if (AppState.stopwatch.isRunning || AppState.stopwatch.isPaused) {
@@ -1675,7 +1699,7 @@ const UI = {
                 const prevCum = laps.length > 0 ? laps[laps.length - 1].cumulative : 0;
                 const currentLapTime = AppState.stopwatch.elapsedTime - prevCum;
                 const currentLapNum = laps.length + 1;
-                cl.textContent = this.t('stopwatch.lap') + ' ' + currentLapNum + ': ' + Utils.formatTime(currentLapTime);
+                cl.textContent = this.t('stopwatch.lap') + ' ' + currentLapNum + ': ' + Utils.formatTimeCustom(currentLapTime, AppState.display.timeMode, AppState.display.showHundredths);
             } else {
                 cl.textContent = '';
             }
@@ -1701,8 +1725,8 @@ const UI = {
             </header>
             <main>
                 <div class="stopwatch-container">
-                    <div class="time-display" id="timeDisplay">${Utils.formatTime(AppState.stopwatch.elapsedTime)}</div>
-                    ${(isRunning || isPaused) ? (()=>{ const prevCum = laps.length>0?laps[laps.length-1].cumulative:0; const cur = AppState.stopwatch.elapsedTime - prevCum; const num = laps.length+1; return `<div class="current-lap" id="currentLapDisplay">${this.t('stopwatch.lap')} ${num}: ${Utils.formatTime(cur)}</div>`;})() : `<div class="current-lap" id="currentLapDisplay"></div>`}
+                    <div class="time-display" id="timeDisplay">${Utils.formatTimeCustom(AppState.stopwatch.elapsedTime, AppState.display.timeMode, AppState.display.showHundredths)}</div>
+                    ${(isRunning || isPaused) ? (()=>{ const prevCum = laps.length>0?laps[laps.length-1].cumulative:0; const cur = AppState.stopwatch.elapsedTime - prevCum; const num = laps.length+1; return `<div class="current-lap" id="currentLapDisplay">${this.t('stopwatch.lap')} ${num}: ${Utils.formatTimeCustom(cur, AppState.display.timeMode, AppState.display.showHundredths)}</div>`;})() : `<div class="current-lap" id="currentLapDisplay"></div>`}
                     <div class="controls">
                         ${!isRunning ? `
                             <div class="controls-stack">
@@ -1778,6 +1802,9 @@ const UI = {
             return;
         }
         const results = DataManager.getFolderResults(folderId);
+        const folderColor = folder.color || 'var(--bg-secondary)';
+        const textColor = folder.textColor || null;
+        const textVars = textColor ? `; --text-primary: ${textColor}; --text-secondary: ${this.adjustColor(textColor, -35)}` : '';
         
         this.app.innerHTML = `
             <header>
@@ -1805,7 +1832,7 @@ const UI = {
                 ` : `
                     <div class="results-list">
                         ${results.map(result => `
-                            <div class="result-item" data-result-id="${result.id}" draggable="true">
+                            <div class="result-item" data-result-id="${result.id}" draggable="true" style="background: ${folderColor}${textVars}; color: var(--text-primary);">
                                 ${result.image ? `
                                     <img class="result-thumb" src="${result.image}" alt="thumb">
                                 ` : `
@@ -1851,6 +1878,8 @@ const UI = {
             return;
         }
         const avgLapTime = Utils.calculateAverage(result.laps);
+        const fastestLapTime = result.laps && result.laps.length ? Math.min(...result.laps.map(l => l.time)) : 0;
+        const longestLapTime = result.laps && result.laps.length ? Math.max(...result.laps.map(l => l.time)) : 0;
         
         this.app.innerHTML = `
             <header>
@@ -1875,13 +1904,23 @@ const UI = {
                             <div class="stat-label">${this.t('resultDetail.totalTime')}</div>
                             <div class="stat-value">${Utils.formatTimeCustom(result.totalTime, AppState.display.timeMode, AppState.display.showHundredths)}</div>
                         </div>
-                        <div class="stat-card">
+                        <div class="stat-card stat-laps">
                             <div class="stat-label">${this.t('stopwatch.laps')}</div>
                             <div class="stat-value">${result.laps.length}</div>
                         </div>
                         <div class="stat-card">
                             <div class="stat-label">${this.t('stopwatch.avgLap')}</div>
                             <div class="stat-value">${Utils.formatTimeCustom(avgLapTime, AppState.display.timeMode, AppState.display.showHundredths)}</div>
+                        </div>
+                    </div>
+                    <div class="stats-grid" style="grid-template-columns: 1fr 1fr;">
+                        <div class="stat-card">
+                            <div class="stat-label">${this.t('resultDetail.fastestLap')}</div>
+                            <div class="stat-value">${Utils.formatTimeCustom(fastestLapTime, AppState.display.timeMode, AppState.display.showHundredths)}</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">${this.t('resultDetail.longestLap')}</div>
+                            <div class="stat-value">${Utils.formatTimeCustom(longestLapTime, AppState.display.timeMode, AppState.display.showHundredths)}</div>
                         </div>
                     </div>
                     <button class="btn btn-primary btn-block" id="calculateBtn">${this.t('action.calculate')}</button>
@@ -2101,7 +2140,7 @@ const UI = {
             <form id="saveResultForm">
                 <div class="form-group">
                     <label class="form-label">${this.t('save.resultName')}</label>
-                    <input type="text" class="form-input" id="resultNameInput" required autofocus value="${existingResult ? existingResult.name : ''}">
+                    <input type="text" class="form-input" id="resultNameInput" required value="${existingResult ? existingResult.name : ''}">
                 </div>
                 <div class="form-group">
                     <label class="form-label">${this.t('save.project')}</label>
@@ -2135,7 +2174,7 @@ const UI = {
                     <button type="submit" class="btn btn-success">${isUpdate ? this.t('action.update') : this.t('action.save')}</button>
                 </div>
             </form>
-        `);
+        `, { closeOnOutside: false });
         
         const folderSelect = modal.querySelector('#folderSelect');
         const newFolderGroup = modal.querySelector('#newFolderGroup');
@@ -2151,13 +2190,11 @@ const UI = {
                 newFolderGroup.classList.add('hidden');
             }
         }
-        // If no folders exist, default to creating a new one and focus its name field
+        // If no folders exist, default to creating a new one (keep focus on result name for keyboard stability)
         const foldersExist = (Array.from(folderSelect.options).filter(o => o.value && o.value !== '__new__').length > 0);
         if (!foldersExist) {
             folderSelect.value = '__new__';
             newFolderGroup.classList.remove('hidden');
-            const newFolderInput = modal.querySelector('#newFolderInput');
-            if (newFolderInput) { newFolderInput.focus(); newFolderInput.select(); }
         }
 
         folderSelect.addEventListener('change', () => {
@@ -2165,7 +2202,7 @@ const UI = {
             newFolderGroup.classList.toggle('hidden', !creating);
             if (creating) {
                 const nf = modal.querySelector('#newFolderInput');
-                if (nf) { nf.focus(); nf.select(); }
+                if (nf) { setTimeout(() => { nf.focus(); nf.select(); }, 200); }
             }
         });
 
@@ -2184,7 +2221,7 @@ const UI = {
         });
         
         const nameInput = modal.querySelector('#resultNameInput');
-        if (nameInput && foldersExist) { nameInput.focus(); nameInput.select(); }
+        if (nameInput) { setTimeout(() => { nameInput.focus(); nameInput.select(); }, 350); }
 
         modal.querySelector('#saveResultForm').addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -2852,7 +2889,9 @@ const UI = {
         this.closeResultMenu();
         const menu = document.createElement('div');
         menu.className = 'menu-popover';
-        menu.innerHTML = `<button class="menu-item" data-action="delete" data-result-id="${resultId}">${this.t('menu.delete')}</button>`;
+        menu.innerHTML = `
+            <button class="menu-item" data-action="rename" data-result-id="${resultId}">${this.t('menu.rename')}</button>
+            <button class="menu-item" data-action="delete" data-result-id="${resultId}">${this.t('menu.delete')}</button>`;
         document.body.appendChild(menu);
         const rect = anchorEl.getBoundingClientRect();
         const pos = this.positionMenu(rect, menu);
@@ -2866,6 +2905,36 @@ const UI = {
             }
         };
         setTimeout(() => document.addEventListener('click', close, true), 0);
+    },
+    showRenameResultDialog(resultId) {
+        const result = DataManager.getResults().find(r => r.id === resultId);
+        if (!result) return;
+        const modal = this.createModal(this.t('rename.title'), `
+            <form id="renameResultForm">
+                <div class="form-group">
+                    <label class="form-label">${this.t('rename.name')}</label>
+                    <input type="text" class="form-input" id="renameResultInput" required value="${result.name}">
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-secondary" id="cancelRenameBtn">${this.t('action.cancel')}</button>
+                    <button type="submit" class="btn btn-success">${this.t('action.update')}</button>
+                </div>
+            </form>
+        `, { closeOnOutside: false });
+        const input = modal.querySelector('#renameResultInput');
+        if (input) setTimeout(() => { input.focus(); input.select(); }, 250);
+        modal.querySelector('#cancelRenameBtn').addEventListener('click', () => modal.remove());
+        modal.querySelector('#renameResultForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const name = input.value.trim();
+            if (!name) return;
+            DataManager.updateResult(resultId, { name });
+            modal.remove();
+            // Refresh the current view
+            if (AppState.currentView === 'folder') this.renderFolderView(AppState.currentFolder);
+            else if (AppState.currentView === 'result') this.renderResultDetail(resultId);
+            else this.renderHome();
+        });
     },
     closeResultMenu() {
         if (this._openMenu) { this._openMenu.remove(); this._openMenu = null; }
