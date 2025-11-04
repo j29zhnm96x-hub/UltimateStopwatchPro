@@ -259,22 +259,29 @@ main {
     .fab.pulse { animation: none; }
 }
 
-/* Folders Grid */
+/* Folders Grid -> one per row list */
 .folders-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-    gap: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
 }
 
 .folder-card {
     background: var(--bg-secondary);
     border-radius: 12px;
-    padding: 16px 16px 36px 16px;
-    cursor: pointer;
+    padding: 16px;
+    border: 2px solid var(--border);
     transition: all 0.2s;
-    border: 2px solid transparent;
     position: relative;
+    cursor: pointer;
+    -webkit-user-select: none;
+    user-select: none;
     -webkit-tap-highlight-color: transparent;
+    display: grid;
+    grid-template-columns: 1fr; /* single column: name + count stack */
+    gap: 12px;
+    align-items: center;
+    min-height: 88px;
 }
 
 .folder-card:active {
@@ -283,8 +290,8 @@ main {
 }
 
 .folder-card h3 {
-    font-size: 16px;
-    margin-bottom: 8px;
+    font-size: 18px;
+    margin: 0 0 6px 0;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -293,9 +300,8 @@ main {
 }
 
 .folder-count {
+    color: var(--text-secondary);
     font-size: 14px;
-    color: var(--folder-text-secondary, var(--text-secondary));
-    font-weight: 500;
 }
 
 .folder-delete {
@@ -471,11 +477,11 @@ main {
 .result-item {
     background: var(--bg-secondary);
     border-radius: 12px;
-    padding: 16px 16px 36px 16px;
+    padding: 16px;
     cursor: pointer;
     transition: all 0.2s;
     display: grid;
-    grid-template-columns: 88px 1fr;
+    grid-template-columns: 88px 1fr auto;
     gap: 12px;
     align-items: center;
     min-height: 88px; /* ensure uniform height */
@@ -859,9 +865,7 @@ main {
     }
     .current-lap { font-size: 36px; }
     
-    .folders-grid {
-        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-    }
+    .folders-grid { flex-direction: column; }
 
     .result-detail .stats-grid {
         grid-template-columns: 1fr auto 1fr;
@@ -1003,13 +1007,28 @@ main {
     box-shadow: 0 0 0 2px var(--accent);
 }
 
-/* Folder and result menu buttons */
-.folder-card .icon-btn,
-.result-item .icon-btn {
+/* Folder menu button */
+.folder-menu {
     position: absolute;
-    bottom: 8px;
+    top: 8px;
     right: 8px;
+    background: rgba(0, 0, 0, 0.2);
+    border: none;
+    border-radius: 50%;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: var(--text-primary);
+    transition: all 0.2s;
     z-index: 10;
+}
+
+.folder-menu:hover {
+    background: rgba(0, 0, 0, 0.3);
+    transform: scale(1.1);
 }
 
 /* Safe Area Insets for Notched Devices */

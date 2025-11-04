@@ -1629,7 +1629,15 @@ const UI = {
     
     renderHome() {
         AppState.currentView = 'home';
-        const folders = DataManager.getFolders().sort((a,b) => (a.position ?? 999999) - (b.position ?? 999999));
+        const sortPref = localStorage.getItem('as_homeSort') || 'manual';
+        let folders = DataManager.getFolders();
+        if (sortPref === 'alpha') {
+            folders = folders.slice().sort((a,b) => (a.name||'').localeCompare(b.name||''));
+        } else if (sortPref === 'newest') {
+            folders = folders.slice().sort((a,b) => new Date(b.createdAt||0) - new Date(a.createdAt||0));
+        } else {
+            folders = folders.slice().sort((a,b) => (a.position ?? 999999) - (b.position ?? 999999));
+        }
         
         this.app.innerHTML = `
             <header id="header">
@@ -1664,8 +1672,8 @@ const UI = {
                             const textVars = folder.textColor ? `; --folder-text: ${folder.textColor}; --folder-text-secondary: ${this.adjustColor(folder.textColor, -20)}` : '';
                             return `
                                 <div class="folder-card" data-folder-id="${folder.id}" draggable="true" style="background: ${folderColor}${textVars};">
-                                    <button class="icon-btn result-menu" data-folder-id="${folder.id}" aria-label="More">
-                                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <button class="folder-menu" data-folder-id="${folder.id}">
+                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                             <circle cx="12" cy="5" r="1.5"/>
                                             <circle cx="12" cy="12" r="1.5"/>
                                             <circle cx="12" cy="19" r="1.5"/>
@@ -2629,6 +2637,14 @@ const UI = {
                     </select>
                 </div>
                 <div class="form-group">
+                    <label class="form-label">Sort projects</label>
+                    <select class="form-select" id="homeSortSelect">
+                        <option value="manual" ${(localStorage.getItem('as_homeSort')||'manual')==='manual' ? 'selected' : ''}>Manual (drag to reorder)</option>
+                        <option value="alpha" ${(localStorage.getItem('as_homeSort')||'manual')==='alpha' ? 'selected' : ''}>A–Z</option>
+                        <option value="newest" ${(localStorage.getItem('as_homeSort')||'manual')==='newest' ? 'selected' : ''}>Newest first</option>
+                    </select>
+                </div>
+                <div class="form-group">
                     <label class="form-label">${this.t('settings.units')}</label>
                     <select class="form-select" id="unitsSelect">
                         <option value="metric" ${AppState.units === 'metric' ? 'selected' : ''}>${this.t('settings.metric')}</option>
@@ -2735,6 +2751,13 @@ const UI = {
                 this.applyLanguage();
                 modal.remove();
                 this.rerenderCurrentView();
+            });
+        }
+        const homeSortSel = modal.querySelector('#homeSortSelect');
+        if (homeSortSel) {
+            homeSortSel.addEventListener('change', () => {
+                localStorage.setItem('as_homeSort', homeSortSel.value);
+                this.renderHome();
             });
         }
         const unitsSel = modal.querySelector('#unitsSelect');
