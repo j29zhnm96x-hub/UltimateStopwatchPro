@@ -1664,8 +1664,8 @@ const UI = {
                             const textVars = folder.textColor ? `; --folder-text: ${folder.textColor}; --folder-text-secondary: ${this.adjustColor(folder.textColor, -20)}` : '';
                             return `
                                 <div class="folder-card" data-folder-id="${folder.id}" draggable="true" style="background: ${folderColor}${textVars};">
-                                    <button class="folder-menu" data-folder-id="${folder.id}">
-                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <button class="icon-btn result-menu" data-folder-id="${folder.id}" aria-label="More">
+                                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                             <circle cx="12" cy="5" r="1.5"/>
                                             <circle cx="12" cy="12" r="1.5"/>
                                             <circle cx="12" cy="19" r="1.5"/>
