@@ -808,6 +808,8 @@ main {
     gap: 12px;
 }
 .calc-panel { display: flex; flex-direction: column; gap: 12px; }
+.calc-left { order: 2; }
+.calc-right { order: 1; }
 .calc-keys-grid {
     display: grid;
     grid-template-columns: repeat(4, minmax(56px, 1fr));
@@ -891,6 +893,8 @@ main {
     .modal-content.wide { max-width: min(96vw, 820px); }
     .calc-layout { grid-template-columns: minmax(220px, 0.9fr) 1.1fr; gap: 16px; }
     #calcMain { font-size: 36px; }
+    .calc-left { order: 1; }
+    .calc-right { order: 2; }
 }
 
 /* Touch Feedback */

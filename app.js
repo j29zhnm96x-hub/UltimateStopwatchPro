@@ -2329,17 +2329,21 @@ const UI = {
                 <button class="calc-tab" data-tab="price">${this.t('calc.tab.price')}</button>
             </div>
             <div id="quantityPanel">
+                <div class="calc-result hidden" id="quantityResult">
+                    <div class="calc-result-label">${this.t('calc.estimatedTotalTime')}</div>
+                    <div class="calc-result-value" id="quantityValue"></div>
+                </div>
                 <div class="form-group">
                     <label class="form-label">${this.t('calc.numberOfItems')}</label>
                     <input type="number" inputmode="numeric" class="form-input" id="quantityInput" min="1" value="100">
                 </div>
                 <button class="btn btn-primary btn-block" id="calcQuantityBtn">${this.t('action.calculate')}</button>
-                <div class="calc-result hidden" id="quantityResult">
-                    <div class="calc-result-label">${this.t('calc.estimatedTotalTime')}</div>
-                    <div class="calc-result-value" id="quantityValue"></div>
-                </div>
             </div>
             <div id="timePanel" class="hidden">
+                <div class="calc-result hidden" id="timeResult">
+                    <div class="calc-result-label">${this.t('calc.estimatedQuantity')}</div>
+                    <div class="calc-result-value" id="timeValue"></div>
+                </div>
                 <div class="form-group">
                     <label class="form-label">${this.t('calc.duration')}</label>
                     <div style="display:flex;gap:8px;align-items:center;">
@@ -2353,21 +2357,17 @@ const UI = {
                     </div>
                 </div>
                 <button class="btn btn-primary btn-block" id="calcTimeBtn">${this.t('action.calculate')}</button>
-                <div class="calc-result hidden" id="timeResult">
-                    <div class="calc-result-label">${this.t('calc.estimatedQuantity')}</div>
-                    <div class="calc-result-value" id="timeValue"></div>
-                </div>
             </div>
             <div id="pricePanel" class="hidden">
+                <div class="calc-result hidden" id="priceResult">
+                    <div class="calc-result-label">${this.t('calc.pricePerPiece')}</div>
+                    <div class="calc-result-value" id="priceValue"></div>
+                </div>
                 <div class="form-group">
                     <label class="form-label">${this.t('calc.hourlyWage')} (${AppState.currency})</label>
                     <input type="number" inputmode="decimal" class="form-input" id="wageInput" min="0" step="0.01" value="${result.hourlyWage || ''}">
                 </div>
                 <button class="btn btn-primary btn-block" id="calcPriceBtn">${this.t('action.calculate')}</button>
-                <div class="calc-result hidden" id="priceResult">
-                    <div class="calc-result-label">${this.t('calc.pricePerPiece')}</div>
-                    <div class="calc-result-value" id="priceValue"></div>
-                </div>
             </div>
             <div class="modal-actions mt-3"><button class="btn btn-secondary" id="closeCalcBtn">${this.t('action.close')}</button></div>
         `);
@@ -2436,7 +2436,7 @@ const UI = {
             if (wage) {
                 const pricePerPiece = (wage / 3600) * avgSeconds;
                 lastPriceValue = pricePerPiece;
-                modal.querySelector('#priceValue').textContent = AppState.currency + ' ' + pricePerPiece.toFixed(4);
+                modal.querySelector('#priceValue').textContent = AppState.currency + ' ' + pricePerPiece.toFixed(2);
                 modal.querySelector('#priceResult').classList.remove('hidden');
                 DataManager.updateResult(result.id, { hourlyWage: wage });
                 mem.price = { wage, pricePerPiece };
@@ -2510,7 +2510,7 @@ const UI = {
                 if (typeof mem.price.pricePerPiece === 'number') {
                     lastPriceValue = mem.price.pricePerPiece;
                     const pv = modal.querySelector('#priceValue');
-                    if (pv) { pv.textContent = AppState.currency + ' ' + lastPriceValue.toFixed(4); pv.parentElement?.classList?.remove('hidden'); }
+                    if (pv) { pv.textContent = AppState.currency + ' ' + lastPriceValue.toFixed(2); pv.parentElement?.classList?.remove('hidden'); }
                 }
             }
         } catch (e) { /* ignore */ }
@@ -2535,6 +2535,8 @@ const UI = {
             </div>
         `, { closeOnOutside: false });
         modal.querySelector('.modal-content')?.classList.add('pop-animate','wide');
+        const mc = modal.querySelector('.modal-content');
+        if (mc) mc.scrollTop = 0;
         const small = modal.querySelector('#calcExprSmall');
         const main = modal.querySelector('#calcMain');
         const live = modal.querySelector('#calcLive');
@@ -2598,7 +2600,7 @@ const UI = {
             else if (v==='minutes') num = totalMs/60000;
             else if (v==='hours') num = totalMs/3600000;
             else if (v==='days') num = totalMs/86400000;
-            out.textContent = num.toFixed(3).replace(/\.000$/, '');
+            out.textContent = num.toFixed(2).replace(/\.00$/, '');
         };
         sel.addEventListener('change', fmt);
         fmt();
