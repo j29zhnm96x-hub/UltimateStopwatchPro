@@ -2467,10 +2467,11 @@ const UI = {
             this.showNumericCalculator(initial, null, this.t('calc.tab.time'));
         });
 
-        // Price panel: long-press price -> numeric calculator
+        // Price panel: long-press price -> numeric calculator (rounded to 2 decimals)
         setupLongPress(modal.querySelector('#priceValue'), () => {
             const txt = modal.querySelector('#priceValue').textContent || '';
-            const num = (lastPriceValue != null) ? lastPriceValue : parseFloat(txt.replace(/[^0-9.\-]/g, '')) || 0;
+            const raw = (lastPriceValue != null) ? lastPriceValue : parseFloat(txt.replace(/[^0-9.\-]/g, '')) || 0;
+            const num = Number(raw.toFixed(2));
             this.showNumericCalculator(num, null, this.t('calc.tab.price'));
         });
 
@@ -2540,7 +2541,7 @@ const UI = {
         const small = modal.querySelector('#calcExprSmall');
         const main = modal.querySelector('#calcMain');
         const live = modal.querySelector('#calcLive');
-        let expr = String(initialValue);
+        let expr = (Number(initialValue) || 0).toFixed(2);
         let lastVal = Number(initialValue) || 0;
         const sanitize = (s) => (/^[0-9+\-*/().\s.]+$/.test(s) ? s : '0');
         const evaluate = (sIn) => {
@@ -2552,8 +2553,8 @@ const UI = {
             small.textContent = expr;
             const { val } = evaluate();
             if (!isNaN(val)) {
-                const pv = parseFloat(val.toFixed(2));
-                if (live) live.textContent = '≈ ' + pv.toString();
+                const pv = val.toFixed(2);
+                if (live) live.textContent = '≈ ' + pv;
             } else {
                 if (live) live.textContent = '';
             }
@@ -2564,7 +2565,7 @@ const UI = {
                 const k = b.dataset.k;
                 if (k === 'C') { expr=''; small.textContent=''; render(); return; }
                 if (k === '⌫') { if (expr.length>0){ expr = expr.slice(0,-1); render(); } return; }
-                if (k === '=') { const {val,s} = evaluate(); if (!isNaN(val)) { small.textContent = s; const fmtVal = parseFloat(val.toFixed(2)); expr = fmtVal.toString(); lastVal = fmtVal; render(); } return; }
+                if (k === '=') { const {val,s} = evaluate(); if (!isNaN(val)) { small.textContent = s; const fmt = val.toFixed(2); expr = fmt; lastVal = Number(fmt); render(); } return; }
                 expr += k; render();
             });
         });
