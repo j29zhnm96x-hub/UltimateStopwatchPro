@@ -2531,7 +2531,6 @@ const UI = {
                 <div class="calc-panel calc-right">
                     <div id="calcExprSmall" style="font-size:12px;color:var(--text-secondary);min-height:18px;text-align:right;"></div>
                     <div id="calcMain" style="font-size:28px;font-weight:700;text-align:right;padding:8px 12px;border-radius:8px;background:var(--bg-secondary);"></div>
-                    <div id="calcLive" class="calc-live"></div>
                 </div>
             </div>
         `, { closeOnOutside: false });
@@ -2540,33 +2539,34 @@ const UI = {
         if (mc) mc.scrollTop = 0;
         const small = modal.querySelector('#calcExprSmall');
         const main = modal.querySelector('#calcMain');
-        const live = modal.querySelector('#calcLive');
         let expr = (Number(initialValue) || 0).toFixed(2);
         let lastVal = Number(initialValue) || 0;
+        let historyExpr = expr;
+        let justEvaluated = false;
         const sanitize = (s) => (/^[0-9+\-*/().\s.]+$/.test(s) ? s : '0');
         const evaluate = (sIn) => {
             const s = sanitize((sIn ?? expr).trim());
             try { const val = Function('"use strict";return (' + (s||'0') + ')')(); return { val: Number(val), s }; } catch { return { val: NaN, s }; }
         };
         const render = () => {
-            main.textContent = expr;
-            small.textContent = expr;
+            small.textContent = historyExpr || expr; // show expression path
             const { val } = evaluate();
             if (!isNaN(val)) {
-                const pv = val.toFixed(2);
-                if (live) live.textContent = '≈ ' + pv;
+                main.textContent = val.toFixed(2); // live evaluated value
             } else {
-                if (live) live.textContent = '';
+                main.textContent = '';
             }
         };
         render();
         modal.querySelectorAll('[data-k]').forEach(b=>{
             b.addEventListener('click', ()=>{
                 const k = b.dataset.k;
-                if (k === 'C') { expr=''; small.textContent=''; render(); return; }
-                if (k === '⌫') { if (expr.length>0){ expr = expr.slice(0,-1); render(); } return; }
-                if (k === '=') { const {val,s} = evaluate(); if (!isNaN(val)) { small.textContent = s; const fmt = val.toFixed(2); expr = fmt; lastVal = Number(fmt); render(); } return; }
-                expr += k; render();
+                if (k === 'C') { expr=''; historyExpr=''; justEvaluated=false; render(); return; }
+                if (k === '⌫') { if (expr.length>0){ expr = expr.slice(0,-1); historyExpr = expr; render(); } return; }
+                if (k === '=') { const {val,s} = evaluate(); if (!isNaN(val)) { historyExpr = s + ' ='; const fmt = val.toFixed(2); expr = fmt; lastVal = Number(fmt); justEvaluated = true; render(); } return; }
+                // any other key after equals starts a new expression
+                if (justEvaluated || (historyExpr && /\=\s*$/.test(historyExpr))) { expr=''; historyExpr=''; justEvaluated=false; }
+                expr += k; historyExpr = expr; render();
             });
         });
         modal.querySelector('#calcBack').addEventListener('click', ()=> modal.remove());
