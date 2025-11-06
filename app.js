@@ -2549,10 +2549,17 @@ const UI = {
             try { const val = Function('"use strict";return (' + (s||'0') + ')')(); return { val: Number(val), s }; } catch { return { val: NaN, s }; }
         };
         const render = () => {
-            small.textContent = historyExpr || expr; // show expression path
+            // Always show the expression/path on the small display
+            small.textContent = historyExpr || expr;
+            // While typing (before equals): show the expression itself on the main display
+            if (!justEvaluated) {
+                main.textContent = expr;
+                return;
+            }
+            // After equals: show the evaluated numeric result on the main display (two decimals)
             const { val } = evaluate();
             if (!isNaN(val)) {
-                main.textContent = val.toFixed(2); // live evaluated value
+                main.textContent = val.toFixed(2);
             } else {
                 main.textContent = '';
             }
