@@ -905,7 +905,7 @@ const Locales = {
         'help.countdownTitle': 'Countdown to Start',
         'help.countdownText': 'Tap the timer icon to set 1–10 seconds. Press Start to hear beeps during countdown; at 0 the stopwatch starts.',
         'help.voiceTitle': 'Voice Control',
-        'help.voiceText': 'Enable the mic button to say: “start, next, pause, resume, stop, reset” (also supports Croatian equivalents).',
+    'help.voiceText': 'Enable the mic button and say: “start, next, pause, resume, stop, reset” (Croatian equivalents: pokreni, kreni, počni, početak, sljedeće, sljedeći, krug, pauza, nastavi, zaustavi, resetiraj, poništi).',
         'help.soundsTitle': 'Sounds',
         'help.soundsText': 'UI clicks and stopwatch actions have distinct sounds. On iOS, ensure volume is up and Silent Mode is off.',
         'help.saveTitle': 'Saving Results',
@@ -1076,7 +1076,7 @@ const Locales = {
         'help.countdownTitle': 'Odbrojavanje prije starta',
         'help.countdownText': 'Dodirnite ikonu tajmera za 1–10 sekundi. Pritisnite Start kako biste čuli beepove; na 0 štoperica kreće.',
         'help.voiceTitle': 'Glasovno upravljanje',
-        'help.voiceText': 'Uključite mikrofon i recite: “start, next, pause, resume, stop, reset” (podržane su i hrvatske riječi).',
+    'help.voiceText': 'Uključite mikrofon i recite: “start, next, pause, resume, stop, reset” ili hrvatske: pokreni, kreni, počni, početak, sljedeće, sljedeći, krug, pauza, nastavi, zaustavi, resetiraj, poništi.',
         'help.soundsTitle': 'Zvukovi',
         'help.soundsText': 'UI klikovi i radnje štoperice imaju različite zvukove. Na iOS-u provjerite glasnoću i isključen Tihi način.',
         'help.saveTitle': 'Spremanje rezultata',
@@ -1406,14 +1406,29 @@ const UI = {
         const vLang = AppState.voice.lang;
         // Prefer explicit voice setting; otherwise use device/browser language; fallback to app language, then en-US
         let lang = 'en-US';
+        const mapLang = (code) => {
+            if (!code) return null;
+            const lc = code.toLowerCase();
+            if (lc === 'hr' || lc.startsWith('hr-')) return 'hr-HR';
+            if (lc === 'en' || lc.startsWith('en-')) return 'en-US';
+            if (lc === 'es' || lc.startsWith('es-')) return 'es-ES';
+            if (lc === 'de' || lc.startsWith('de-')) return 'de-DE';
+            if (lc === 'fr' || lc.startsWith('fr-')) return 'fr-FR';
+            if (lc === 'it' || lc.startsWith('it-')) return 'it-IT';
+            if (lc === 'pt' || lc.startsWith('pt-')) return 'pt-PT';
+            if (lc === 'pt-br') return 'pt-BR';
+            if (lc === 'ru' || lc.startsWith('ru-')) return 'ru-RU';
+            if (lc === 'uk' || lc.startsWith('uk-')) return 'uk-UA';
+            return code; // fallback to original
+        };
         if (vLang && vLang !== 'auto') {
-            lang = vLang;
+            lang = mapLang(vLang) || 'en-US';
         } else {
             const navLang = (navigator.languages && navigator.languages[0]) || navigator.language || '';
             if ((navLang && navLang.toLowerCase().startsWith('hr')) || (AppState.lang && AppState.lang.toLowerCase().startsWith('hr'))) {
                 lang = 'hr-HR';
             } else if (navLang) {
-                lang = navLang;
+                lang = mapLang(navLang) || navLang;
             }
         }
         rec.lang = lang;
@@ -1425,7 +1440,7 @@ const UI = {
             const GL = window.SpeechGrammarList || window.webkitSpeechGrammarList;
             if (GL) {
                 const list = new GL();
-                const jsgf = '#JSGF V1.0; grammar cmd; public <command> = start | next | pause | resume | stop | reset | pokreni | kreni | startaj | sljede | sljedece | sljedeci | dalje | krug | runda | pauza | nastavi | zaustavi | stani | resetiraj | ponisti ;';
+                const jsgf = '#JSGF V1.0; grammar cmd; public <command> = start | next | pause | resume | stop | reset | pokreni | kreni | pocni | pocetak | pocet | startaj | sljede | sljedece | sljedeci | dalje | krug | runda | pauza | nastavi | zaustavi | stani | resetiraj | ponisti | poništi ;';
                 list.addFromString(jsgf, 1);
                 rec.grammars = list;
             }
@@ -1449,13 +1464,14 @@ const UI = {
         rec.onend = () => {
             AppState.voice.recognizing = false;
             if (AppState.voice.enabled) {
-                setTimeout(() => { try { rec.start(); AppState.voice.recognizing = true; } catch(_){} }, 300);
+                setTimeout(() => { try { rec.start(); AppState.voice.recognizing = true; } catch(err){ try{ console.warn('[voice][onend][restart-failed]', err); } catch(_){} } }, 300);
             }
         };
-        rec.onerror = () => {
+        rec.onerror = (ev) => {
             AppState.voice.recognizing = false;
+            try { console.warn('[voice][error]', ev && ev.error ? ev.error : ev); } catch {}
             if (AppState.voice.enabled) {
-                setTimeout(() => { try { rec.start(); AppState.voice.recognizing = true; } catch(_){} }, 800);
+                setTimeout(() => { try { rec.start(); AppState.voice.recognizing = true; } catch(err){ try{ console.warn('[voice][onerror][restart-failed]', err); } catch(_){} } }, 800);
             }
         };
         AppState.voice.recognizer = rec;
@@ -1505,12 +1521,12 @@ const UI = {
         const tn = t.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
         const has = (...words) => words.some(w => t.includes(w) || tn.includes(w));
         const contains = (s) => (t.includes(s) || tn.includes(s));
-        const nextStems = ['next','lap','sljede','sljedece','sljedeci','dalje','krug','runda'];
-        const stopStems = ['stop','zaustav','stani'];
-        const pauseStems = ['pause','pauz'];
-        const resumeStems = ['resume','continue','nastav'];
-        const resetStems = ['reset','restart','resetiraj','ponist'];
-        const startStems = ['start','go','begin','pokreni','kreni','startaj'];
+    const nextStems = ['next','lap','sljede','sljedece','sljedeci','dalje','krug','runda'];
+    const stopStems = ['stop','zaustav','zaustavi','stani'];
+    const pauseStems = ['pause','pauz','pauza'];
+    const resumeStems = ['resume','continue','nastav','nastavi'];
+    const resetStems = ['reset','restart','resetiraj','ponisti','poništi'];
+    const startStems = ['start','go','begin','pokreni','kreni','startaj','pocni','pocet','pocetak','počni','počet'];
         const found = (arr) => arr.some(contains);
         const isStop = found(stopStems);
         const isPause = found(pauseStems);
