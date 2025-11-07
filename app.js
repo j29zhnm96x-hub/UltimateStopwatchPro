@@ -2984,12 +2984,19 @@ const UI = {
                 <button class="btn btn-secondary btn-block" id="applyCustomBtn" style="margin-top:12px;">${this.t('theme.applyCustom')}</button>
                 <button class="btn btn-secondary btn-block" id="saveThemeBtn" style="margin-top:8px;">${this.t('theme.saveTheme')}</button>
             </div>
-            <div class="modal-actions mt-3">
-                <button class="btn btn-secondary" id="closeThemeBtn">${this.t('action.close')}</button>
-            </div>
+            
         `);
 
-        modal.querySelector('#closeThemeBtn').addEventListener('click', () => modal.remove());
+        // Replace header for this modal to include a top-right close (X) button
+        const headerEl = modal.querySelector('.modal-header');
+        if (headerEl) {
+            headerEl.innerHTML = `
+                <span class="modal-title">${this.t('theme.title')}</span>
+                <button class="modal-close-x" id="closeThemeX" aria-label="${this.t('action.close')}">×</button>
+            `;
+            const closeBtn = modal.querySelector('#closeThemeX');
+            if (closeBtn) closeBtn.addEventListener('click', () => modal.remove());
+        }
 
         // Palette selection
         modal.querySelectorAll('.palette-card').forEach(card => {

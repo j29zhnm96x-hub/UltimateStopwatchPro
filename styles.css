@@ -685,6 +685,25 @@ main {
     font-size: 20px;
     font-weight: 600;
     margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.modal-close-x {
+    background: transparent;
+    border: none;
+    font-size: 20px;
+    line-height: 1;
+    cursor: pointer;
+    color: var(--text-secondary);
+    padding: 6px 8px;
+    border-radius: 8px;
+}
+.modal-close-x:hover {
+    color: var(--text-primary);
+    background: var(--bg-tertiary);
 }
 
 .form-group {
