@@ -1,0 +1,13 @@
+<!DOCTYPE html>
+<html><body>
+<script>
+// Test scrolling in modal
+setTimeout(() => {
+  const modal = document.querySelector('.modal');
+  if (modal) {
+    const content = modal.querySelector('.modal-content') || modal;
+    content.scrollTop = content.scrollHeight;
+  }
+}, 500);
+</script>
+</body></html>
