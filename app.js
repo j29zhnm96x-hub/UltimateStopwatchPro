@@ -683,7 +683,18 @@ const Locales = {
         'error.imageLoadFailed': 'Unable to load image. Please try a different file.',
         'error.projectNotFound': 'Project not found. It may have been deleted.',
         'error.nameRequired': 'Please enter a name.',
+        'error.importFailed': 'Import failed. Please check the file and try again.',
+        'error.exportFailed': 'Export failed. Please try again.',
+        'error.invalidBackupFile': 'Invalid backup file format.',
         'settings.projectSettings': 'Project settings for the current project.',
+        'settings.backupRestore': 'Backup & Restore',
+        'settings.exportSetup': 'Export Setup',
+        'settings.importSetup': 'Import Setup',
+        'settings.exportDesc': 'Export all data as a zip file',
+        'settings.importDesc': 'Import data from a backup file',
+        'confirm.importSetup': 'This will replace all current data with the imported backup. Continue?',
+        'success.exportSetup': 'Setup exported successfully!',
+        'success.importSetup': 'Setup imported successfully!',
         'info.wakeLockNote': 'Uses the Screen Wake Lock API when available.',
         'label.h': 'h', 'label.m': 'm', 'label.s': 's',
         'currency.euro': 'Euro (€)',
@@ -836,7 +847,18 @@ const Locales = {
         'error.imageLoadFailed': 'Učitavanje slike nije uspjelo. Pokušajte s drugom datotekom.',
         'error.projectNotFound': 'Projekt nije pronađen. Možda je obrisan.',
         'error.nameRequired': 'Molimo unesite naziv.',
+        'error.importFailed': 'Uvoz nije uspio. Provjerite datoteku i pokušajte ponovo.',
+        'error.exportFailed': 'Izvoz nije uspio. Pokušajte ponovo.',
+        'error.invalidBackupFile': 'Nevažeći format sigurnosne kopije.',
         'settings.projectSettings': 'Postavke projekta za trenutni projekt.',
+        'settings.backupRestore': 'Sigurnosna kopija i vraćanje',
+        'settings.exportSetup': 'Izvezi postavke',
+        'settings.importSetup': 'Uvezi postavke',
+        'settings.exportDesc': 'Izvezi sve podatke kao zip datoteku',
+        'settings.importDesc': 'Uvezi podatke iz sigurnosne kopije',
+        'confirm.importSetup': 'Ovo će zamijeniti sve trenutne podatke s uvezenom sigurnosnom kopijom. Nastaviti?',
+        'success.exportSetup': 'Postavke uspješno izvezene!',
+        'success.importSetup': 'Postavke uspješno uvezene!',
         'info.wakeLockNote': 'Koristi Screen Wake Lock API kada je dostupan.',
         'label.h': 'h', 'label.m': 'm', 'label.s': 's',
         'currency.euro': 'Euro (€)',
@@ -2756,6 +2778,19 @@ const UI = {
                         </div>
                     </div>
                 </div>
+                <div class="form-group">
+                    <label class="form-label">${this.t('settings.backupRestore')}</label>
+                    <div class="menu-list">
+                        <button class="menu-item" id="exportSetupBtn" style="display:flex;flex-direction:column;align-items:flex-start;gap:4px;">
+                            <div style="font-weight:600;">${this.t('settings.exportSetup')}</div>
+                            <div style="color:var(--text-secondary);font-size:12px;">${this.t('settings.exportDesc')}</div>
+                        </button>
+                        <button class="menu-item" id="importSetupBtn" style="display:flex;flex-direction:column;align-items:flex-start;gap:4px;">
+                            <div style="font-weight:600;">${this.t('settings.importSetup')}</div>
+                            <div style="color:var(--text-secondary);font-size:12px;">${this.t('settings.importDesc')}</div>
+                        </button>
+                    </div>
+                </div>
             `;
         } else if (view === 'folder') {
             const folderId = AppState.currentFolder;
@@ -2910,6 +2945,21 @@ const UI = {
                     localStorage.setItem('as_folderSort_' + folderId, sortSel.value);
                     this.renderFolderView(folderId);
                 }
+            });
+        }
+        // Backup & Restore handlers (home view only)
+        const exportBtn = modal.querySelector('#exportSetupBtn');
+        if (exportBtn) {
+            exportBtn.addEventListener('click', () => {
+                modal.remove();
+                this.exportSetup();
+            });
+        }
+        const importBtn = modal.querySelector('#importSetupBtn');
+        if (importBtn) {
+            importBtn.addEventListener('click', () => {
+                modal.remove();
+                this.importSetup();
             });
         }
     },
@@ -3506,6 +3556,143 @@ const UI = {
                 return closest;
             }
         }, { offset: null, element: null }).element;
+    },
+
+    async exportSetup() {
+        try {
+            // Show loading state (optional - can add visual feedback)
+            const exportData = {};
+            
+            // Gather all localStorage keys starting with 'as_'
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (key && key.startsWith('as_')) {
+                    exportData[key] = localStorage.getItem(key);
+                }
+            }
+            
+            // Create JSON string
+            const jsonData = JSON.stringify(exportData, null, 2);
+            
+            // Create zip file using JSZip
+            const zip = new JSZip();
+            zip.file('backup.json', jsonData);
+            
+            // Generate zip file
+            const blob = await zip.generateAsync({ type: 'blob' });
+            
+            // Create timestamp for filename
+            const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+            const filename = `UltimateStopwatch_Backup_${timestamp}.zip`;
+            
+            // Trigger download
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = filename;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(link.href);
+            
+            // Show success message
+            alert(this.t('success.exportSetup'));
+        } catch (error) {
+            console.error('Export failed:', error);
+            alert(this.t('error.exportFailed'));
+        }
+    },
+
+    async importSetup() {
+        try {
+            // Create file input
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.zip';
+            
+            input.onchange = async (e) => {
+                try {
+                    const file = e.target.files[0];
+                    if (!file) return;
+                    
+                    // Read the zip file
+                    const zip = new JSZip();
+                    const contents = await zip.loadAsync(file);
+                    
+                    // Check if backup.json exists
+                    const backupFile = contents.file('backup.json');
+                    if (!backupFile) {
+                        alert(this.t('error.invalidBackupFile'));
+                        return;
+                    }
+                    
+                    // Read and parse JSON
+                    const jsonText = await backupFile.async('text');
+                    const importData = JSON.parse(jsonText);
+                    
+                    // Validate that it contains localStorage data
+                    if (typeof importData !== 'object' || !importData) {
+                        alert(this.t('error.invalidBackupFile'));
+                        return;
+                    }
+                    
+                    // Confirm with user before overwriting
+                    if (!confirm(this.t('confirm.importSetup'))) {
+                        return;
+                    }
+                    
+                    // Clear existing localStorage items starting with 'as_'
+                    const keysToRemove = [];
+                    for (let i = 0; i < localStorage.length; i++) {
+                        const key = localStorage.key(i);
+                        if (key && key.startsWith('as_')) {
+                            keysToRemove.push(key);
+                        }
+                    }
+                    keysToRemove.forEach(key => localStorage.removeItem(key));
+                    
+                    // Import all data
+                    for (const [key, value] of Object.entries(importData)) {
+                        if (key.startsWith('as_')) {
+                            localStorage.setItem(key, value);
+                        }
+                    }
+                    
+                    // Update AppState with new values
+                    AppState.theme = localStorage.getItem('as_theme') || 'dark';
+                    AppState.themePalette_dark = localStorage.getItem('as_themePalette_dark') || 'default';
+                    AppState.themePalette_light = localStorage.getItem('as_themePalette_light') || 'light_default';
+                    AppState.customColors_dark = JSON.parse(localStorage.getItem('as_customColors_dark') || 'null');
+                    AppState.customColors_light = JSON.parse(localStorage.getItem('as_customColors_light') || 'null');
+                    AppState.currency = localStorage.getItem('as_currency') || '€';
+                    AppState.units = localStorage.getItem('as_units') || 'metric';
+                    AppState.lang = localStorage.getItem('as_lang') || 'en';
+                    AppState.keepAwakeOnCharge = JSON.parse(localStorage.getItem('as_keepAwakeCharge') || 'false');
+                    AppState.display.timeMode = localStorage.getItem('as_timeMode') || 'hms';
+                    AppState.display.showHundredths = JSON.parse(localStorage.getItem('as_showHundredths') || 'true');
+                    
+                    // Apply language, theme, and re-render
+                    this.applyLanguage();
+                    this.applyTheme();
+                    this.rerenderCurrentView();
+                    
+                    // Update wake lock binding
+                    if (AppState.updateKeepAwakeBinding) {
+                        await AppState.updateKeepAwakeBinding();
+                    }
+                    
+                    // Show success message
+                    alert(this.t('success.importSetup'));
+                } catch (error) {
+                    console.error('Import failed:', error);
+                    alert(this.t('error.importFailed'));
+                }
+            };
+            
+            input.click();
+        } catch (error) {
+            console.error('Import setup error:', error);
+            alert(this.t('error.importFailed'));
+        }
     }
 };
 
