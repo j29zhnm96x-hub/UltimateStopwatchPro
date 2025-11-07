@@ -219,6 +219,15 @@ main {
     z-index: 50;
 }
 
+/* Centered FAB variant for Home and Project pages */
+.fab-container.fab-centered {
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%);
+    align-items: center;
+    bottom: 24px;
+}
+
 .fab {
     width: 56px;
     height: 56px;
@@ -694,11 +703,11 @@ main {
 .modal-close-x {
     background: transparent;
     border: none;
-    font-size: 20px;
+    font-size: 26px; /* increased by ~30% */
     line-height: 1;
     cursor: pointer;
     color: var(--text-secondary);
-    padding: 6px 8px;
+    padding: 8px 10px;
     border-radius: 8px;
 }
 .modal-close-x:hover {
@@ -1132,6 +1141,13 @@ main {
     .fab-container {
         bottom: max(24px, env(safe-area-inset-bottom));
         right: max(24px, env(safe-area-inset-right));
+    }
+
+    .fab-container.fab-centered {
+        bottom: max(24px, env(safe-area-inset-bottom));
+        left: 50%;
+        right: auto;
+        transform: translateX(-50%);
     }
 }
 

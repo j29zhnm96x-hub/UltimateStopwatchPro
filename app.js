@@ -1745,7 +1745,7 @@ const UI = {
                 `}
             </main>
             ${!AppState.stopwatch.isRunning ? `
-                <div class="fab-container">
+                <div class="fab-container fab-centered">
                     <button class="fab large pulse" id="startStopwatchBtn" title="${this.t('tooltip.startStopwatch')}">
                         <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
@@ -1928,7 +1928,7 @@ const UI = {
                 `}
             </main>
             ${!AppState.stopwatch.isRunning ? `
-                <div class="fab-container">
+                <div class="fab-container fab-centered">
                     <button class="fab large pulse" id="startStopwatchBtn" title="Start Stopwatch">
                         <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
@@ -2081,7 +2081,10 @@ const UI = {
         modal.className = 'modal active';
         modal.innerHTML = `
             <div class="modal-content">
-                <div class="modal-header">${title}</div>
+                <div class="modal-header">
+                    <span class="modal-title">${title}</span>
+                    <button class="modal-close-x" aria-label="${this.t('action.close')}">×</button>
+                </div>
                 ${content}
             </div>
         `;
@@ -2090,6 +2093,9 @@ const UI = {
         if (closeOnOutside) {
             modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
         }
+        // Wire the header close button
+        const headerClose = modal.querySelector('.modal-close-x');
+        if (headerClose) headerClose.addEventListener('click', () => modal.remove());
         return modal;
     },
 
@@ -2114,11 +2120,7 @@ const UI = {
                 <p><strong>${this.t('help.tipsTitle')}</strong><br>${this.t('help.tipsText')}</p>
             </div>`;
         const modal = this.createModal(this.t('help.title'), content);
-        const btn = document.createElement('div');
-        btn.style.textAlign = 'right';
-        btn.innerHTML = `<button class="btn btn-primary" id="closeHelpBtn">${this.t('action.close')}</button>`;
-        modal.querySelector('.modal-content').appendChild(btn);
-        modal.querySelector('#closeHelpBtn').addEventListener('click', ()=> modal.remove());
+    // header X close is provided by createModal; no bottom close button needed
     },
 
     showRemoveLapDialog(resultId, lapIndex) {
@@ -2431,7 +2433,6 @@ const UI = {
                 </div>
                 <button class="btn btn-primary btn-block" id="calcPriceBtn">${this.t('action.calculate')}</button>
             </div>
-            <div class="modal-actions mt-3"><button class="btn btn-secondary" id="closeCalcBtn">${this.t('action.close')}</button></div>
         `);
         
         const tabs = modal.querySelectorAll('.calc-tab');
@@ -2505,7 +2506,7 @@ const UI = {
             }
         });
         
-        modal.querySelector('#closeCalcBtn').addEventListener('click', () => modal.remove());
+    // header X close is provided by createModal; no bottom close button needed
 
         // Long-press helpers
         const setupLongPress = (el, handler, delay = 650) => {
@@ -2586,9 +2587,7 @@ const UI = {
                     <div class="calc-keys-grid">
                         ${['7','8','9','/','4','5','6','*','1','2','3','-','0','.','(',')','C','⌫','+','='].map(k=>`<button type=\"button\" class=\"btn btn-secondary\" data-k=\"${k}\">${k}</button>`).join('')}
                     </div>
-                    <div class="modal-actions">
-                        <button type="button" class="btn btn-secondary" id="calcBack">${this.t('action.close')}</button>
-                    </div>
+                    <!-- header X close handles closing -->
                 </div>
                 <div class="calc-panel calc-right">
                     <div id="calcExprSmall" style="font-size:12px;color:var(--text-secondary);min-height:18px;text-align:right;"></div>
@@ -2638,7 +2637,7 @@ const UI = {
                 expr += k; historyExpr = expr; render();
             });
         });
-        modal.querySelector('#calcBack').addEventListener('click', ()=> modal.remove());
+    // header X close is provided by createModal; no bottom close button needed
     },
 
     showTimeConverter(totalMs) {
@@ -2655,9 +2654,7 @@ const UI = {
                     <div class="calc-result-label">Result</div>
                     <div class="calc-result-value" id="convValue" style="font-size:32px;"></div>
                 </div>
-                <div class="modal-actions">
-                    <button type="button" class="btn btn-secondary" id="convClose">${this.t('action.close')}</button>
-                </div>
+                <!-- header X close handles closing -->
             </div>
         `, { closeOnOutside: true });
         modal.querySelector('.modal-content')?.classList.add('pop-animate');
@@ -2674,7 +2671,7 @@ const UI = {
         };
         sel.addEventListener('change', fmt);
         fmt();
-        modal.querySelector('#convClose').addEventListener('click', ()=> modal.remove());
+    // header X close is provided by createModal; no bottom close button needed
     },
 
     showSettingsDialog() {
@@ -2808,11 +2805,7 @@ const UI = {
         }
         const modal = this.createModal(this.t('action.settings'), `
             <div>${body}</div>
-            <div class="modal-actions mt-3">
-                <button class="btn btn-secondary" id="closeSettingsBtn">${this.t('action.close')}</button>
-            </div>
         `, { closeOnOutside: false });
-        modal.querySelector('#closeSettingsBtn').addEventListener('click', () => modal.remove());
 
         // Persist settings when changed (Home view)
         const langSel = modal.querySelector('#langSelect');
@@ -2987,16 +2980,7 @@ const UI = {
             
         `);
 
-        // Replace header for this modal to include a top-right close (X) button
-        const headerEl = modal.querySelector('.modal-header');
-        if (headerEl) {
-            headerEl.innerHTML = `
-                <span class="modal-title">${this.t('theme.title')}</span>
-                <button class="modal-close-x" id="closeThemeX" aria-label="${this.t('action.close')}">×</button>
-            `;
-            const closeBtn = modal.querySelector('#closeThemeX');
-            if (closeBtn) closeBtn.addEventListener('click', () => modal.remove());
-        }
+        // Header close button is provided by createModal (global), no per-modal header injection needed
 
         // Palette selection
         modal.querySelectorAll('.palette-card').forEach(card => {
