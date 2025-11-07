@@ -1,5 +1,13 @@
 {
   "dependencies": {
     "jszip": "^3.10.1"
+  },
+  "devDependencies": {
+    "mocha": "^10.2.0",
+    "chai": "^4.3.7",
+    "jsdom": "^21.1.1"
+  },
+  "scripts": {
+    "test": "mocha --recursive --exit tests"
   }
 }

@@ -198,6 +198,247 @@ const DataManager = {
     deleteSavedTheme(mode, themeId) {
         const themes = this.getSavedThemes(mode);
         this.saveSavedThemes(mode, themes.filter(t => t.id !== themeId));
+    },
+
+    // Export a single project (folder + results) as JSON
+    async exportProjectJSON(folderId) {
+        // Export project and ensure images are embedded as data URLs
+        try {
+            const folders = this.getFolders();
+            const folder = folders.find(f => f.id === folderId);
+            if (!folder) return false;
+            const results = (this.getResults().filter(r => r.folderId === folderId)).map(r => ({ ...r }));
+            // helper: fetch external image and convert to data URL
+            const blobToDataURL = (blob) => new Promise((res, rej) => {
+                const reader = new FileReader();
+                reader.onload = () => res(reader.result);
+                reader.onerror = rej;
+                reader.readAsDataURL(blob);
+            });
+
+            const failedFetches = [];
+
+            const tryEmbed = async (r, idx) => {
+                if (!(r.image && typeof r.image === 'string' && !r.image.startsWith('data:'))) return true;
+                try {
+                    const resp = await fetch(r.image);
+                    if (resp.ok) {
+                        const blob = await resp.blob();
+                        const dataUrl = await blobToDataURL(blob);
+                        r.image = dataUrl;
+                        return true;
+                    }
+                    failedFetches.push({ index: idx, url: r.image, reason: `HTTP ${resp.status}` });
+                    return false;
+                } catch (err) {
+                    failedFetches.push({ index: idx, url: r.image, reason: err && err.message ? err.message : 'fetch failed' });
+                    return false;
+                }
+            };
+
+            // First pass: try to embed all images
+            for (let i = 0; i < results.length; i++) {
+                await tryEmbed(results[i], i);
+            }
+
+            // If some failed due to CORS/network, present a friendly popup if UI is available
+            if (failedFetches.length > 0 && typeof window !== 'undefined' && window.UI && typeof window.UI.createModal === 'function') {
+                const listHtml = failedFetches.map(f => `<div style="margin-bottom:6px"><strong>${Utils.escapeHTML(f.url)}</strong><div style="font-size:12px;color:var(--text-secondary);">${Utils.escapeHTML(f.reason)}</div></div>`).join('');
+                const modal = window.UI.createModal(window.UI.t('export.imageFetchFailedTitle') || 'Images blocked', `
+                    <div class="form-group">
+                        <p>${window.UI.t('export.imageFetchFailedText') || 'Some images could not be fetched (CORS or network). Choose how to proceed:'}</p>
+                        <div style="max-height:220px;overflow:auto;padding:6px;border:1px solid var(--border);margin-top:8px;">${listHtml}</div>
+                    </div>
+                    <div class="modal-actions" style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px;">
+                        <button class="btn btn-secondary" id="exportCancelBtn">${window.UI.t('action.cancel') || 'Cancel'}</button>
+                        <button class="btn btn-secondary" id="exportSkipBtn">${window.UI.t('export.exportWithoutImages') || 'Export without these images'}</button>
+                        <button class="btn btn-primary" id="exportRetryBtn">${window.UI.t('action.retry') || 'Retry'}</button>
+                    </div>
+                `, { closeOnOutside: false });
+
+                const userChoice = await new Promise((resolve) => {
+                    modal.querySelector('#exportCancelBtn').addEventListener('click', () => { modal.remove(); resolve('cancel'); });
+                    modal.querySelector('#exportSkipBtn').addEventListener('click', () => { modal.remove(); resolve('skip'); });
+                    modal.querySelector('#exportRetryBtn').addEventListener('click', () => { modal.remove(); resolve('retry'); });
+                });
+
+                if (userChoice === 'cancel') return false;
+                if (userChoice === 'retry') {
+                    // try embedding failed ones again (one more attempt)
+                    const toRetry = failedFetches.slice();
+                    failedFetches.length = 0;
+                    for (const f of toRetry) {
+                        await tryEmbed(results[f.index], f.index);
+                    }
+                    // If still failing, fall through to allow skip or proceed
+                    if (failedFetches.length > 0) {
+                        // show second chance modal: ask to skip or cancel
+                        const modal2 = window.UI.createModal(window.UI.t('export.imageFetchStillFailedTitle') || 'Images still blocked', `
+                            <div class="form-group">
+                                <p>${window.UI.t('export.imageFetchStillFailedText') || 'Some images still cannot be fetched. Do you want to export without them or cancel?'}</p>
+                            </div>
+                            <div class="modal-actions" style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px;">
+                                <button class="btn btn-secondary" id="exportCancelBtn2">${window.UI.t('action.cancel') || 'Cancel'}</button>
+                                <button class="btn btn-primary" id="exportSkipBtn2">${window.UI.t('export.exportWithoutImages') || 'Export without these images'}</button>
+                            </div>
+                        `, { closeOnOutside: false });
+                        const choice2 = await new Promise((resolve) => {
+                            modal2.querySelector('#exportCancelBtn2').addEventListener('click', () => { modal2.remove(); resolve('cancel'); });
+                            modal2.querySelector('#exportSkipBtn2').addEventListener('click', () => { modal2.remove(); resolve('skip'); });
+                        });
+                        if (choice2 === 'cancel') return false;
+                        // else proceed with skip
+                    }
+                }
+                // if skip or all retried successfully, continue
+            }
+
+            const payload = { project: folder, results };
+            const json = JSON.stringify(payload, null, 2);
+            const blob = new Blob([json], { type: 'application/json' });
+            const safeName = (folder.name || 'project').replace(/[^a-z0-9_\- ]/gi, '_').slice(0,60);
+            const ts = new Date().toISOString().replace(/[:.]/g,'-').slice(0,19);
+            const fn = `project_${safeName}_${ts}.json`;
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = fn;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(a.href);
+            return true;
+        } catch (e) {
+            console.error('Export project failed', e);
+            return false;
+        }
+    },
+
+    // Share a project as ZIP (uses global JSZip if available)
+    async shareProjectZip(folderId) {
+        if (typeof JSZip === 'undefined') {
+            console.warn('JSZip not available');
+            return false;
+        }
+        const folders = this.getFolders();
+        const folder = folders.find(f => f.id === folderId);
+        if (!folder) return false;
+        const results = (this.getResults().filter(r => r.folderId === folderId)).map(r => ({ ...r }));
+        const zip = new JSZip();
+
+        // Prepare images folder in zip and adjust result.image to point to images/<filename>
+        const imagesFolder = zip.folder('images');
+        const addedFiles = [];
+
+        const sanitizeFilename = (name) => (name || '').replace(/[^a-z0-9_\-\. ]/gi, '_').slice(0,120);
+
+        const getFilenameFromSource = (src, idx, mime) => {
+            try {
+                if (!src) return `image_${idx}.${(mime||'png').split('/')[1] || 'png'}`;
+                if (src.startsWith('data:')) {
+                    const mt = src.match(/^data:(image\/[a-z0-9.+-]+);/i);
+                    const ext = mt && mt[1] ? mt[1].split('/')[1] : (mime ? mime.split('/')[1] : 'png');
+                    return sanitizeFilename(`image_${idx}.${ext}`);
+                }
+                const url = new URL(src, window.location.href);
+                const parts = url.pathname.split('/').filter(Boolean);
+                const last = parts.length ? parts[parts.length-1] : null;
+                if (last && last.indexOf('.') !== -1) return sanitizeFilename(last);
+                // fallback to generated name
+                const ext = mime && mime.split('/')[1] ? mime.split('/')[1] : 'png';
+                return sanitizeFilename(`image_${idx}.${ext}`);
+            } catch (e) {
+                const ext = mime && mime.split('/')[1] ? mime.split('/')[1] : 'png';
+                return sanitizeFilename(`image_${idx}.${ext}`);
+            }
+        };
+
+        const fetchAsBlob = async (src) => {
+            if (!src) return null;
+            if (src.startsWith('data:')) {
+                // convert data URL to blob
+                const arr = src.split(',');
+                const mime = arr[0].match(/:(.*?);/)[1];
+                const bstr = atob(arr[1]);
+                let n = bstr.length;
+                const u8 = new Uint8Array(n);
+                while (n--) u8[n] = bstr.charCodeAt(n);
+                return new Blob([u8], { type: mime });
+            } else {
+                // fetch external URL
+                try {
+                    const resp = await fetch(src);
+                    if (!resp.ok) return null;
+                    return await resp.blob();
+                } catch (e) {
+                    console.warn('Failed to fetch image for zip', src, e);
+                    return null;
+                }
+            }
+        };
+
+        for (let i = 0; i < results.length; i++) {
+            const r = results[i];
+            if (r.image) {
+                const blob = await fetchAsBlob(r.image);
+                if (blob) {
+                    // determine extension from blob.type
+                    const mime = blob.type || 'image/png';
+                    const filename = getFilenameFromSource(r.image, i, mime);
+                    imagesFolder.file(filename, blob);
+                    addedFiles.push(filename);
+                    r.image = `images/${filename}`;
+                }
+            }
+        }
+
+        const payload = { project: folder, results };
+        zip.file('project.json', JSON.stringify(payload, null, 2));
+        const content = await zip.generateAsync({ type: 'blob' });
+        const safeName = (folder.name || 'project').replace(/[^a-z0-9_\- ]/gi, '_').slice(0,60);
+        const ts = new Date().toISOString().replace(/[:.]/g,'-').slice(0,19);
+        const fn = `project_${safeName}_${ts}.zip`;
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(content);
+        a.download = fn;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(a.href);
+        return true;
+    },
+
+    // Merge imported project payload safely (creates new folder & result IDs)
+    mergeProjectFromPayload(payload) {
+        if (!payload || !payload.project) throw new Error('Invalid payload');
+        const folders = this.getFolders();
+        const allResults = this.getResults();
+        const original = payload.project;
+        let baseName = original.name || 'Imported Project';
+        let newName = baseName;
+        if (folders.some(f => f.name === newName)) {
+            newName = `${baseName} (${new Date().toLocaleDateString()})`;
+        }
+        const newFolderId = Date.now().toString() + '-' + Math.floor(Math.random()*1000);
+        const newFolder = {
+            ...original,
+            id: newFolderId,
+            name: newName,
+            createdAt: new Date().toISOString(),
+            position: (folders.length ? Math.max(...folders.map(f => f.position ?? 0)) + 1 : 0)
+        };
+        folders.push(newFolder);
+        this.saveFolders(folders);
+        const incoming = Array.isArray(payload.results) ? payload.results : [];
+        const startPos = allResults.length;
+        const mapped = incoming.map((r, idx) => ({
+            ...r,
+            id: Date.now().toString() + '-' + idx + '-' + Math.floor(Math.random()*1000),
+            folderId: newFolderId,
+            createdAt: r.createdAt || new Date().toISOString(),
+            position: startPos + idx
+        }));
+        this.saveResults([...allResults, ...mapped]);
+        return { folder: newFolder, results: mapped };
     }
 };
 
@@ -699,7 +940,14 @@ const Locales = {
         'label.h': 'h', 'label.m': 'm', 'label.s': 's',
         'currency.euro': 'Euro (€)',
         'currency.usd': 'US Dollar ($)',
-        'currency.gbp': 'Pound (£)'
+    'currency.gbp': 'Pound (£)',
+    'action.exportProject': 'Export Project',
+    'action.importProject': 'Import Project',
+    'action.shareProject': 'Share Project (ZIP)',
+    'success.projectImported': 'Project imported successfully!',
+    'error.exportFailed': 'Export failed.',
+    'error.importFailed': 'Import failed.',
+    'error.invalidProjectFile': 'Invalid project file.'
     },
     hr: {
         'title.app': 'Ultimate Stopwatch',
@@ -863,7 +1111,14 @@ const Locales = {
         'label.h': 'h', 'label.m': 'm', 'label.s': 's',
         'currency.euro': 'Euro (€)',
         'currency.usd': 'Američki dolar ($)',
-        'currency.gbp': 'Funta (£)'
+    'currency.gbp': 'Funta (£)',
+    'action.exportProject': 'Izvezi projekt',
+    'action.importProject': 'Uvezi projekt',
+    'action.shareProject': 'Podijeli projekt (ZIP)',
+    'success.projectImported': 'Projekt uspješno uvezen!',
+    'error.exportFailed': 'Izvoz nije uspio.',
+    'error.importFailed': 'Uvoz nije uspio.',
+    'error.invalidProjectFile': 'Neispravna datoteka projekta.'
     }
     // NOTE: Additional languages will fall back to English if a key is missing.
 };
@@ -2962,6 +3217,91 @@ const UI = {
                 this.importSetup();
             });
         }
+        // Add Import Project (merge) button when on home view
+        if (view === 'home') {
+            const backupGroup = modal.querySelector('.form-group:nth-of-type(3) .menu-list') || modal.querySelector('.menu-list');
+            if (backupGroup) {
+                const item = document.createElement('button');
+                item.className = 'menu-item';
+                item.id = 'importProjectBtn';
+                item.style.display = 'flex';
+                item.style.flexDirection = 'column';
+                item.style.alignItems = 'flex-start';
+                item.style.gap = '4px';
+                item.innerHTML = `
+                    <div style="font-weight:600;">${this.t('action.importProject')}</div>
+                    <div style="color:var(--text-secondary);font-size:12px;">${this.t('settings.importProjectDesc') || 'Import a single project (merges, does not overwrite).'}</div>
+                `;
+                backupGroup.appendChild(item);
+                item.addEventListener('click', () => {
+                    modal.remove();
+                    const input = document.createElement('input');
+                    input.type = 'file';
+                    input.accept = '.json,application/json,.zip,application/zip';
+                    input.onchange = async (e) => {
+                        const file = e.target.files && e.target.files[0];
+                        if (!file) return;
+                        try {
+                            let payload = null;
+                            if (file.name && file.name.toLowerCase().endsWith('.zip')) {
+                                if (typeof JSZip === 'undefined') {
+                                    alert(this.t('error.importFailed') + ' (JSZip missing)');
+                                    return;
+                                }
+                                const zip = await JSZip.loadAsync(file);
+                                const pj = zip.file('project.json');
+                                if (!pj) {
+                                    alert(this.t('error.invalidProjectFile'));
+                                    return;
+                                }
+                                const text = await pj.async('string');
+                                payload = JSON.parse(text);
+                                // if there are images referenced as images/<name>, replace with data URLs
+                                const blobToDataURL = (blob) => new Promise((res, rej) => {
+                                    const reader = new FileReader();
+                                    reader.onload = () => res(reader.result);
+                                    reader.onerror = rej;
+                                    reader.readAsDataURL(blob);
+                                });
+                                if (Array.isArray(payload.results)) {
+                                    for (let r of payload.results) {
+                                        if (r.image && typeof r.image === 'string' && r.image.startsWith('images/')) {
+                                            const imgFile = zip.file(r.image);
+                                            if (imgFile) {
+                                                const blob = await imgFile.async('blob');
+                                                try {
+                                                    const dataUrl = await blobToDataURL(blob);
+                                                    r.image = dataUrl;
+                                                } catch (e) {
+                                                    console.warn('Failed to convert image in zip to data URL', r.image, e);
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            } else {
+                                const text = await file.text();
+                                payload = JSON.parse(text);
+                            }
+
+                            if (!payload || !payload.project) {
+                                alert(this.t('error.invalidProjectFile'));
+                                return;
+                            }
+                            const res = DataManager.mergeProjectFromPayload(payload);
+                            this.applyLanguage();
+                            this.applyTheme();
+                            this.renderHome();
+                            alert(this.t('success.projectImported'));
+                        } catch (err) {
+                            console.error('Import project failed', err);
+                            alert(this.t('error.importFailed'));
+                        }
+                    };
+                    input.click();
+                });
+            }
+        }
     },
 
     showThemeCustomization() {
@@ -3261,6 +3601,8 @@ const UI = {
         menu.innerHTML = `
             <button class="menu-item" data-action="color" data-folder-id="${folderId}">${this.t('menu.chooseProjectColor')}</button>
             <button class="menu-item" data-action="text-color" data-folder-id="${folderId}">${this.t('menu.chooseProjectTextColor')}</button>
+            <button class="menu-item" data-action="export" data-folder-id="${folderId}">${this.t('action.exportProject')}</button>
+            <button class="menu-item" data-action="share" data-folder-id="${folderId}">${this.t('action.shareProject')}</button>
             <button class="menu-item" data-action="delete" data-folder-id="${folderId}">${this.t('menu.delete')}</button>
         `;
         document.body.appendChild(menu);
@@ -3275,7 +3617,21 @@ const UI = {
             if (!item) return;
             const action = item.dataset.action;
             
-            if (action === 'delete') {
+            if (action === 'export') {
+                (async () => {
+                    const ok = await DataManager.exportProjectJSON(folderId);
+                    if (!ok) alert(this.t('error.exportFailed'));
+                })();
+                this.closeResultMenu();
+                return;
+            } else if (action === 'share') {
+                (async () => {
+                    const ok = await DataManager.shareProjectZip(folderId);
+                    if (!ok) alert(this.t('error.exportFailed'));
+                })();
+                this.closeResultMenu();
+                return;
+            } else if (action === 'delete') {
                 if (confirm(this.t('confirm.deleteProject'))) {
                     DataManager.deleteFolder(folderId);
                     this.closeResultMenu();

@@ -184,4 +184,11 @@
   };
 
   // ADD_MORE_LOCALES_HERE
+  window.LocalesExtra['en'] = {
+    'export.imageFetchFailedTitle': 'Unable to include images',
+    'export.imageFetchFailedText': 'Some images could not be fetched due to cross-origin restrictions or network errors. You can retry, export without these images, or cancel.',
+    'export.exportWithoutImages': 'Export without these images',
+    'export.imageFetchStillFailedTitle': 'Images still blocked',
+    'export.imageFetchStillFailedText': 'Some images still could not be fetched. Export without them or cancel.'
+  };
 })();
