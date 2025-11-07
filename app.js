@@ -285,6 +285,12 @@ const Utils = {
         if (parts.length !== 3) return 0;
         return (parseInt(parts[0]) * 3600 + parseInt(parts[1]) * 60 + parseInt(parts[2])) * 1000;
     },
+
+    escapeHTML(value) {
+        const str = (value ?? '').toString();
+        const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
+        return str.replace(/[&<>"']/g, (ch) => map[ch]) || '';
+    },
     
     calculateAverage: (laps) => laps.length === 0 ? 0 : laps.reduce((sum, lap) => sum + lap.time, 0) / laps.length,
     
@@ -299,7 +305,7 @@ const Utils = {
 
     async imageToDataURLCompressed(file, maxSize = 1024, quality = 0.8) {
         const dataUrl = await this.imageToDataURL(file);
-        return new Promise((resolve) => {
+        return new Promise((resolve, reject) => {
             const img = new Image();
             img.onload = () => {
                 let { width, height } = img;
@@ -311,6 +317,7 @@ const Utils = {
                 ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
                 resolve(canvas.toDataURL('image/jpeg', quality));
             };
+            img.onerror = () => reject(new Error('IMAGE_LOAD_FAILED'));
             img.src = dataUrl;
         });
     },
@@ -636,6 +643,7 @@ const Locales = {
         'countdown.secondsLabel': 'Seconds (1–10)',
         'error.wakeLockUnsupported': 'Screen Wake Lock is not supported on this browser.',
         'error.saveFailed': 'Saving failed: storage is full or data too large. Consider deleting older results or images.',
+        'error.imageLoadFailed': 'Unable to load image. Please try a different file.',
         'error.projectNotFound': 'Project not found. It may have been deleted.',
         'settings.projectSettings': 'Project settings for the current project.',
         'info.wakeLockNote': 'Uses the Screen Wake Lock API when available.',
@@ -778,6 +786,7 @@ const Locales = {
         'countdown.secondsLabel': 'Sekunde (1–10)',
         'error.wakeLockUnsupported': 'Zadržavanje zaslona nije podržano u ovom pregledniku.',
         'error.saveFailed': 'Spremanje nije uspjelo: pohrana je puna ili su podaci preveliki. Obrišite starije rezultate ili slike.',
+        'error.imageLoadFailed': 'Učitavanje slike nije uspjelo. Pokušajte s drugom datotekom.',
         'error.projectNotFound': 'Projekt nije pronađen. Možda je obrisan.',
         'settings.projectSettings': 'Postavke projekta za trenutni projekt.',
         'info.wakeLockNote': 'Koristi Screen Wake Lock API kada je dostupan.',
@@ -1557,7 +1566,7 @@ const UI = {
                     }
                 }
                 if (AppState.stopwatch.isRunning && !confirm(this.t('confirm.stopSession'))) return;
-                StopwatchManager.reset();
+                StopwatchManager.reset(true);
                 this.renderHome();
                 break;
             case 'folder':
@@ -1679,7 +1688,7 @@ const UI = {
                                             <circle cx="12" cy="19" r="1.5"/>
                                         </svg>
                                     </button>
-                                    <h3>${folder.name}</h3>
+                                    <h3>${Utils.escapeHTML(folder.name || '')}</h3>
                                     <div class="folder-count">${results.length} ${this.p('folder.result','folder.results', results.length)}</div>
                                 </div>
                             `;
@@ -1834,7 +1843,7 @@ const UI = {
                         <path d="M19 12H5M12 19l-7-7 7-7"/>
                     </svg>
                 </button>
-                <h1>${folder.name}</h1>
+                <h1>${Utils.escapeHTML(folder.name || '')}</h1>
                 <div style="display:flex;gap:8px;align-items:center;">
                     <button id="settingsBtn" class="icon-btn" title="${this.t('action.settings')}">${this.getSettingsIcon()}</button>
                 </div>
@@ -1857,7 +1866,7 @@ const UI = {
                                     <div class="result-thumb placeholder"></div>
                                 `}
                                 <div class="result-info">
-                                    <h3>${result.name}</h3>
+                                    <h3>${Utils.escapeHTML(result.name || '')}</h3>
                                     <div class="result-meta">${result.laps.length} laps • ${Utils.formatTime(result.totalTime)}</div>
                                 </div>
                                 <button class="icon-btn result-menu" data-result-id="${result.id}" aria-label="More">
@@ -1907,7 +1916,7 @@ const UI = {
                         <path d="M19 12H5M12 19l-7-7 7-7"/>
                     </svg>
                 </button>
-                <h1>${result.name}</h1>
+                <h1>${Utils.escapeHTML(result.name || '')}</h1>
                 <div style="display:flex;gap:8px;align-items:center;">
                     <button id="settingsBtn" class="icon-btn" title="${this.t('action.settings')}">${this.getSettingsIcon()}</button>
                 </div>
@@ -2254,10 +2263,15 @@ const UI = {
         });
 
         imageInput.addEventListener('change', async (e) => {
-            if (e.target.files[0]) {
-                const dataUrl = await Utils.imageToDataURLCompressed(e.target.files[0]);
+            const file = e.target.files && e.target.files[0];
+            if (!file) return;
+            try {
+                const dataUrl = await Utils.imageToDataURLCompressed(file);
                 imagePreview.src = dataUrl;
                 imagePreview.classList.remove('hidden');
+            } catch (_) {
+                alert(this.t('error.imageLoadFailed'));
+                e.target.value = '';
             }
         });
 
@@ -3213,7 +3227,7 @@ const UI = {
             <form id="renameResultForm">
                 <div class="form-group">
                     <label class="form-label">${this.t('rename.name')}</label>
-                    <input type="text" class="form-input" id="renameResultInput" required value="${result.name}">
+                    <input type="text" class="form-input" id="renameResultInput" required>
                 </div>
                 <div class="modal-actions">
                     <button type="button" class="btn btn-secondary" id="cancelRenameBtn">${this.t('action.cancel')}</button>
@@ -3222,11 +3236,14 @@ const UI = {
             </form>
         `, { closeOnOutside: false });
         const input = modal.querySelector('#renameResultInput');
-        if (input) setTimeout(() => { input.focus(); input.select(); }, 250);
+        if (input) {
+            input.value = result.name || '';
+            setTimeout(() => { input.focus(); input.select(); }, 250);
+        }
         modal.querySelector('#cancelRenameBtn').addEventListener('click', () => modal.remove());
         modal.querySelector('#renameResultForm').addEventListener('submit', (e) => {
             e.preventDefault();
-            const name = input.value.trim();
+            const name = (input ? input.value : '').trim();
             if (!name) return;
             DataManager.updateResult(resultId, { name });
             modal.remove();
@@ -3261,9 +3278,16 @@ const UI = {
         const apply = modal.querySelector('#applyUpdateBtn');
         let dataUrl = null;
         input.addEventListener('change', async (e) => {
-            if (e.target.files[0]) {
-                dataUrl = await Utils.imageToDataURLCompressed(e.target.files[0]);
+            const file = e.target.files && e.target.files[0];
+            if (!file) return;
+            try {
+                dataUrl = await Utils.imageToDataURLCompressed(file);
                 apply.disabled = false;
+            } catch (_) {
+                alert(this.t('error.imageLoadFailed'));
+                dataUrl = null;
+                apply.disabled = true;
+                e.target.value = '';
             }
         });
         modal.querySelector('#cancelUpdateBtn').addEventListener('click', () => modal.remove());

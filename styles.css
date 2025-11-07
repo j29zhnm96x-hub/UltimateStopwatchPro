@@ -274,8 +274,6 @@ main {
     transition: all 0.2s;
     position: relative;
     cursor: pointer;
-    -webkit-user-select: none;
-    user-select: none;
     -webkit-tap-highlight-color: transparent;
     display: grid;
     grid-template-columns: 1fr; /* single column: name + count stack */
@@ -364,6 +362,11 @@ main {
     min-width: 140px;
     padding: 20px 36px;
     font-size: 20px;
+}
+
+/* Stopwatch control buttons use themed border color */
+.stopwatch-container .controls .control-btn {
+    border: 2px solid var(--border);
 }
 
 /* New stacked layout for stopwatch controls */
@@ -671,6 +674,13 @@ main {
     100% { transform: scale(1) translateY(0); opacity: 1; }
 }
 
+@media (prefers-reduced-motion: reduce) {
+    .modal-content.pop-animate {
+        animation: none;
+        transform: none;
+    }
+}
+
 .modal-header {
     font-size: 20px;
     font-weight: 600;
@@ -805,11 +815,14 @@ main {
 .calc-layout {
     display: grid;
     grid-template-columns: 1fr;
+    grid-template-areas:
+        "display"
+        "keypad";
     gap: 12px;
 }
 .calc-panel { display: flex; flex-direction: column; gap: 12px; }
-.calc-left { order: 2; }
-.calc-right { order: 1; }
+.calc-left { grid-area: keypad; }
+.calc-right { grid-area: display; }
 .calc-keys-grid {
     display: grid;
     grid-template-columns: repeat(4, minmax(56px, 1fr));
@@ -885,16 +898,19 @@ main {
 
     .calc-layout {
         grid-template-columns: auto 1fr; /* keypad left, display right on wider screens */
+        grid-template-areas: "keypad display";
     }
 }
 
 /* Prefer split calc layout on landscape, even on phones */
 @media screen and (orientation: landscape) {
     .modal-content.wide { max-width: min(96vw, 820px); }
-    .calc-layout { grid-template-columns: minmax(220px, 0.9fr) 1.1fr; gap: 16px; }
+    .calc-layout {
+        grid-template-columns: minmax(220px, 0.9fr) 1.1fr;
+        grid-template-areas: "keypad display";
+        gap: 16px;
+    }
     #calcMain { font-size: 36px; }
-    .calc-left { order: 1; }
-    .calc-right { order: 2; }
 }
 
 /* Touch Feedback */
