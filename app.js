@@ -684,6 +684,7 @@ const Locales = {
         'error.projectNotFound': 'Project not found. It may have been deleted.',
         'error.nameRequired': 'Please enter a name.',
         'error.importFailed': 'Import failed. Please check the file and try again.',
+        'error.exportFailed': 'Export failed. Please try again.',
         'error.invalidBackupFile': 'Invalid backup file format.',
         'settings.projectSettings': 'Project settings for the current project.',
         'settings.backupRestore': 'Backup & Restore',
@@ -847,6 +848,7 @@ const Locales = {
         'error.projectNotFound': 'Projekt nije pronađen. Možda je obrisan.',
         'error.nameRequired': 'Molimo unesite naziv.',
         'error.importFailed': 'Uvoz nije uspio. Provjerite datoteku i pokušajte ponovo.',
+        'error.exportFailed': 'Izvoz nije uspio. Pokušajte ponovo.',
         'error.invalidBackupFile': 'Nevažeći format sigurnosne kopije.',
         'settings.projectSettings': 'Postavke projekta za trenutni projekt.',
         'settings.backupRestore': 'Sigurnosna kopija i vraćanje',
@@ -857,7 +859,6 @@ const Locales = {
         'confirm.importSetup': 'Ovo će zamijeniti sve trenutne podatke s uvezenom sigurnosnom kopijom. Nastaviti?',
         'success.exportSetup': 'Postavke uspješno izvezene!',
         'success.importSetup': 'Postavke uspješno uvezene!',
-        'settings.projectSettings': 'Postavke projekta za trenutni projekt.',
         'info.wakeLockNote': 'Koristi Screen Wake Lock API kada je dostupan.',
         'label.h': 'h', 'label.m': 'm', 'label.s': 's',
         'currency.euro': 'Euro (€)',
@@ -3597,7 +3598,7 @@ const UI = {
             alert(this.t('success.exportSetup'));
         } catch (error) {
             console.error('Export failed:', error);
-            alert(this.t('error.importFailed'));
+            alert(this.t('error.exportFailed'));
         }
     },
 
