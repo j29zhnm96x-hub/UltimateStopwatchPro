@@ -170,6 +170,34 @@ const DataManager = {
             }
         });
         this.saveResults(results);
+    },
+
+    getSavedThemes(mode) {
+        const key = mode === 'dark' ? 'as_savedThemes_dark' : 'as_savedThemes_light';
+        return JSON.parse(localStorage.getItem(key) || '[]');
+    },
+
+    saveSavedThemes(mode, themes) {
+        const key = mode === 'dark' ? 'as_savedThemes_dark' : 'as_savedThemes_light';
+        localStorage.setItem(key, JSON.stringify(themes));
+    },
+
+    addSavedTheme(mode, name, colors) {
+        const themes = this.getSavedThemes(mode);
+        const newTheme = {
+            id: Date.now().toString(),
+            name,
+            colors,
+            createdAt: new Date().toISOString()
+        };
+        themes.push(newTheme);
+        this.saveSavedThemes(mode, themes);
+        return newTheme;
+    },
+
+    deleteSavedTheme(mode, themeId) {
+        const themes = this.getSavedThemes(mode);
+        this.saveSavedThemes(mode, themes.filter(t => t.id !== themeId));
     }
 };
 
@@ -513,6 +541,7 @@ const Locales = {
         'action.settings': 'Settings',
         'action.close': 'Close',
         'action.cancel': 'Cancel',
+        'action.back': 'Back',
         'action.create': 'Create',
         'action.save': 'Save',
         'action.update': 'Update',
@@ -559,6 +588,13 @@ const Locales = {
         'theme.text': 'Text',
         'theme.border': 'Border',
         'theme.applyCustom': 'Apply Custom Theme',
+        'theme.saveTheme': 'Save Current Theme',
+        'theme.customThemes': 'Custom Themes',
+        'theme.saveThemeTitle': 'Save Theme',
+        'theme.themeName': 'Theme Name',
+        'theme.noSavedThemes': 'No saved themes yet. Create one by customizing colors and saving!',
+        'theme.deleteTheme': 'Delete',
+        'theme.applyTheme': 'Apply',
         'theme.fineTune': 'Fine-tune your theme by customizing individual colors.',
         'theme.darkMode': 'Dark Mode',
         'theme.lightMode': 'Light Mode',
@@ -586,6 +622,7 @@ const Locales = {
         'rename.name': 'Result name',
         'confirm.deleteProject': 'Delete this project and all its results?',
         'confirm.deleteResult': 'Delete this result?',
+        'confirm.delete': 'Delete',
         'confirm.stopSession': 'Stop the current session?',
         'stopwatch.laps': 'Laps',
         'stopwatch.avg': 'Avg',
@@ -645,6 +682,7 @@ const Locales = {
         'error.saveFailed': 'Saving failed: storage is full or data too large. Consider deleting older results or images.',
         'error.imageLoadFailed': 'Unable to load image. Please try a different file.',
         'error.projectNotFound': 'Project not found. It may have been deleted.',
+        'error.nameRequired': 'Please enter a name.',
         'settings.projectSettings': 'Project settings for the current project.',
         'info.wakeLockNote': 'Uses the Screen Wake Lock API when available.',
         'label.h': 'h', 'label.m': 'm', 'label.s': 's',
@@ -657,6 +695,7 @@ const Locales = {
         'action.settings': 'Postavke',
         'action.close': 'Zatvori',
         'action.cancel': 'Odustani',
+        'action.back': 'Natrag',
         'action.create': 'Stvori',
         'action.save': 'Spremi',
         'action.update': 'Ažuriraj',
@@ -703,6 +742,13 @@ const Locales = {
         'theme.text': 'Tekst',
         'theme.border': 'Rub',
         'theme.applyCustom': 'Primijeni prilagođenu temu',
+        'theme.saveTheme': 'Spremi trenutnu temu',
+        'theme.customThemes': 'Prilagođene teme',
+        'theme.saveThemeTitle': 'Spremi temu',
+        'theme.themeName': 'Naziv teme',
+        'theme.noSavedThemes': 'Nema spremljenih tema. Stvorite jednu prilagodbom boja i spremanjem!',
+        'theme.deleteTheme': 'Izbriši',
+        'theme.applyTheme': 'Primijeni',
         'theme.fineTune': 'Prilagodite temu fino podešavanjem pojedinačnih boja.',
         'theme.darkMode': 'Tamni način',
         'theme.lightMode': 'Svijetli način',
@@ -730,6 +776,7 @@ const Locales = {
         'rename.name': 'Naziv rezultata',
         'confirm.deleteProject': 'Obrisati ovaj projekt i sve njegove rezultate?',
         'confirm.deleteResult': 'Obrisati ovaj rezultat?',
+        'confirm.delete': 'Obriši',
         'confirm.stopSession': 'Zaustaviti trenutno mjerenje?',
         'stopwatch.laps': 'Krugovi',
         'stopwatch.avg': 'Prosjek',
@@ -788,6 +835,7 @@ const Locales = {
         'error.saveFailed': 'Spremanje nije uspjelo: pohrana je puna ili su podaci preveliki. Obrišite starije rezultate ili slike.',
         'error.imageLoadFailed': 'Učitavanje slike nije uspjelo. Pokušajte s drugom datotekom.',
         'error.projectNotFound': 'Projekt nije pronađen. Možda je obrisan.',
+        'error.nameRequired': 'Molimo unesite naziv.',
         'settings.projectSettings': 'Postavke projekta za trenutni projekt.',
         'info.wakeLockNote': 'Koristi Screen Wake Lock API kada je dostupan.',
         'label.h': 'h', 'label.m': 'm', 'label.s': 's',
@@ -2909,6 +2957,7 @@ const UI = {
                         </button>
                     `).join('')}
                 </div>
+                <button class="btn btn-secondary btn-block" id="customThemesBtn" style="margin-top:12px;">${this.t('theme.customThemes')}</button>
             </div>
             <hr style="margin:20px 0;border:none;border-top:2px solid var(--border);"/>
             <div class="form-group">
@@ -2933,6 +2982,7 @@ const UI = {
                     </div>
                 </div>
                 <button class="btn btn-secondary btn-block" id="applyCustomBtn" style="margin-top:12px;">${this.t('theme.applyCustom')}</button>
+                <button class="btn btn-secondary btn-block" id="saveThemeBtn" style="margin-top:8px;">${this.t('theme.saveTheme')}</button>
             </div>
             <div class="modal-actions mt-3">
                 <button class="btn btn-secondary" id="closeThemeBtn">${this.t('action.close')}</button>
@@ -2986,6 +3036,144 @@ const UI = {
                 localStorage.setItem('as_customColors_light', JSON.stringify(custom));
             }
             modal.remove();
+        });
+
+        // Save theme button
+        modal.querySelector('#saveThemeBtn').addEventListener('click', () => {
+            const custom = {
+                primary: modal.querySelector('#customPrimary').value,
+                accent: modal.querySelector('#customAccent').value,
+                text: modal.querySelector('#customText').value,
+                border: modal.querySelector('#customBorder').value
+            };
+            modal.remove();
+            this.showSaveThemeDialog(currentMode, custom);
+        });
+
+        // Custom themes button
+        modal.querySelector('#customThemesBtn').addEventListener('click', () => {
+            modal.remove();
+            this.showSavedThemesPage(currentMode);
+        });
+    },
+
+    showSaveThemeDialog(mode, colors) {
+        const modal = this.createModal(this.t('theme.saveThemeTitle'), `
+            <div class="form-group">
+                <label class="form-label">${this.t('theme.themeName')}</label>
+                <input type="text" class="form-input" id="themeNameInput" value="My Custom Theme" placeholder="${this.t('theme.themeName')}">
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" id="cancelSaveBtn">${this.t('action.cancel')}</button>
+                <button class="btn btn-primary" id="confirmSaveBtn">${this.t('action.save')}</button>
+            </div>
+        `);
+
+        const nameInput = modal.querySelector('#themeNameInput');
+        nameInput.select();
+        nameInput.focus();
+
+        modal.querySelector('#cancelSaveBtn').addEventListener('click', () => {
+            modal.remove();
+        });
+
+        const saveTheme = () => {
+            const themeName = nameInput.value.trim();
+            if (!themeName) {
+                alert(this.t('error.nameRequired') || 'Please enter a theme name');
+                return;
+            }
+            DataManager.addSavedTheme(mode, themeName, colors);
+            modal.remove();
+        };
+
+        modal.querySelector('#confirmSaveBtn').addEventListener('click', saveTheme);
+        nameInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                saveTheme();
+            }
+        });
+    },
+
+    showSavedThemesPage(mode) {
+        const savedThemes = DataManager.getSavedThemes(mode);
+        
+        const modal = this.createModal(this.t('theme.customThemes'), `
+            <div style="margin-bottom:16px;">
+                <p style="font-size:13px;color:var(--text-secondary);">
+                    ${mode === 'dark' ? this.t('theme.darkMode') : this.t('theme.lightMode')}
+                </p>
+            </div>
+            <div id="savedThemesList">
+                ${savedThemes.length === 0 ? `
+                    <div style="text-align:center;padding:32px 16px;color:var(--text-secondary);">
+                        ${this.t('theme.noSavedThemes')}
+                    </div>
+                ` : `
+                    <div class="saved-themes-grid">
+                        ${savedThemes.map(theme => `
+                            <div class="saved-theme-card" data-theme-id="${theme.id}">
+                                <div class="saved-theme-preview">
+                                    <div style="background:${theme.colors.primary};flex:1"></div>
+                                    <div style="background:${theme.colors.accent};flex:1"></div>
+                                    <div style="background:${theme.colors.text};flex:1"></div>
+                                </div>
+                                <div class="saved-theme-name">${theme.name}</div>
+                                <div class="saved-theme-actions">
+                                    <button class="btn btn-sm btn-primary" data-action="apply" data-theme-id="${theme.id}">${this.t('theme.applyTheme')}</button>
+                                    <button class="btn btn-sm btn-danger" data-action="delete" data-theme-id="${theme.id}">${this.t('theme.deleteTheme')}</button>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                `}
+            </div>
+            <div class="modal-actions mt-3">
+                <button class="btn btn-secondary" id="backToThemeBtn">${this.t('action.back')}</button>
+            </div>
+        `);
+
+        modal.querySelector('#backToThemeBtn').addEventListener('click', () => {
+            modal.remove();
+            this.showThemeCustomization();
+        });
+
+        // Handle apply and delete actions
+        modal.querySelectorAll('[data-action="apply"]').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const themeId = btn.dataset.themeId;
+                const theme = savedThemes.find(t => t.id === themeId);
+                if (theme) {
+                    this.applyThemePalette(theme.colors, true);
+                    if (mode === 'dark') {
+                        AppState.themePalette_dark = 'custom';
+                        AppState.customColors_dark = theme.colors;
+                        localStorage.setItem('as_themePalette_dark', 'custom');
+                        localStorage.setItem('as_customColors_dark', JSON.stringify(theme.colors));
+                    } else {
+                        AppState.themePalette_light = 'custom';
+                        AppState.customColors_light = theme.colors;
+                        localStorage.setItem('as_themePalette_light', 'custom');
+                        localStorage.setItem('as_customColors_light', JSON.stringify(theme.colors));
+                    }
+                    modal.remove();
+                }
+            });
+        });
+
+        modal.querySelectorAll('[data-action="delete"]').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const themeId = btn.dataset.themeId;
+                const theme = savedThemes.find(t => t.id === themeId);
+                if (theme && confirm(`${this.t('confirm.delete') || 'Delete'} "${theme.name}"?`)) {
+                    DataManager.deleteSavedTheme(mode, themeId);
+                    modal.remove();
+                    this.showSavedThemesPage(mode);
+                }
+            });
         });
     },
 
