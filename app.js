@@ -200,6 +200,59 @@ const DataManager = {
         this.saveSavedThemes(mode, themes.filter(t => t.id !== themeId));
     },
 
+    async exportThemeJSON(mode, theme) {
+        try {
+            const payload = {
+                type: 'ultimate-stopwatch-theme',
+                version: 1,
+                mode,
+                name: theme.name,
+                colors: theme.colors,
+                createdAt: theme.createdAt || new Date().toISOString()
+            };
+            const json = JSON.stringify(payload, null, 2);
+            const blob = new Blob([json], { type: 'application/json' });
+            const safeName = (theme.name || 'custom').toLowerCase().replace(/[^a-z0-9-_]+/g, '-');
+            const fileName = `theme-${safeName}.json`;
+            const file = new File([blob], fileName, { type: 'application/json' });
+            if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+                try {
+                    await navigator.share({ files: [file], title: theme.name, text: 'Ultimate Stopwatch Theme' });
+                    return true;
+                } catch (_) { /* fall back to download */ }
+            }
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = fileName;
+            document.body.appendChild(a);
+            a.click();
+            setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 0);
+            return true;
+        } catch (e) {
+            return false;
+        }
+    },
+
+    importThemeFromText(mode, text) {
+        try {
+            const obj = JSON.parse(text);
+            const name = (obj && (obj.name || (obj.theme && obj.theme.name))) || 'Imported Theme';
+            const colors = (obj && (obj.colors || (obj.theme && obj.theme.colors)));
+            if (!colors || !colors.primary || !colors.accent || !colors.text || !colors.border) {
+                return { ok: false, error: 'invalid' };
+            }
+            const newTheme = this.addSavedTheme(mode, name, {
+                primary: colors.primary,
+                accent: colors.accent,
+                text: colors.text,
+                border: colors.border
+            });
+            return { ok: true, theme: newTheme };
+        } catch (e) {
+            return { ok: false, error: 'parse' };
+        }
+    },
+
     // Export a single project (folder + results) as JSON
     async exportProjectJSON(folderId) {
         // Export project and ensure images are embedded as data URLs
@@ -836,6 +889,10 @@ const Locales = {
         'theme.noSavedThemes': 'No saved themes yet. Create one by customizing colors and saving!',
         'theme.deleteTheme': 'Delete',
         'theme.applyTheme': 'Apply',
+        'theme.importTheme': 'Import Theme',
+        'theme.exportTheme': 'Export Theme',
+        'theme.import': 'Import',
+        'theme.export': 'Export',
         'theme.fineTune': 'Fine-tune your theme by customizing individual colors.',
         'theme.darkMode': 'Dark Mode',
         'theme.lightMode': 'Light Mode',
@@ -1010,6 +1067,10 @@ const Locales = {
         'theme.noSavedThemes': 'Nema spremljenih tema. Stvorite jednu prilagodbom boja i spremanjem!',
         'theme.deleteTheme': 'Izbriši',
         'theme.applyTheme': 'Primijeni',
+        'theme.importTheme': 'Uvezi temu',
+        'theme.exportTheme': 'Izvezi temu',
+        'theme.import': 'Uvoz',
+        'theme.export': 'Izvoz',
         'theme.fineTune': 'Prilagodite temu fino podešavanjem pojedinačnih boja.',
         'theme.darkMode': 'Tamni način',
         'theme.lightMode': 'Svijetli način',
@@ -3497,6 +3558,9 @@ const UI = {
                     ${mode === 'dark' ? this.t('theme.darkMode') : this.t('theme.lightMode')}
                 </p>
             </div>
+            <div class="form-group" style="margin-bottom:12px;">
+                <button class="btn btn-secondary" id="importThemeBtn">${this.t('theme.importTheme')}</button>
+            </div>
             <div id="savedThemesList">
                 ${savedThemes.length === 0 ? `
                     <div style="text-align:center;padding:32px 16px;color:var(--text-secondary);">
@@ -3514,6 +3578,9 @@ const UI = {
                                 <div class="saved-theme-name">${theme.name}</div>
                                 <div class="saved-theme-actions">
                                     <button class="btn btn-sm btn-primary" data-action="apply" data-theme-id="${theme.id}">${this.t('theme.applyTheme')}</button>
+                                    <button class="btn btn-sm btn-secondary" data-action="export" title="${this.t('theme.exportTheme')}" data-theme-id="${theme.id}">
+                                        ${this.t('theme.export')}
+                                    </button>
                                     <button class="btn btn-sm btn-danger" data-action="delete" data-theme-id="${theme.id}">${this.t('theme.deleteTheme')}</button>
                                 </div>
                             </div>
@@ -3567,6 +3634,45 @@ const UI = {
                 }
             });
         });
+
+        // Handle per-card export
+        modal.querySelectorAll('[data-action="export"]').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                const themeId = btn.dataset.themeId;
+                const theme = savedThemes.find(t => t.id === themeId);
+                if (!theme) return;
+                const ok = await DataManager.exportThemeJSON(mode, theme);
+                if (!ok) alert(this.t('error.exportFailed') || 'Export failed.');
+            });
+        });
+
+        // Handle import button
+        const importBtn = modal.querySelector('#importThemeBtn');
+        if (importBtn) {
+            importBtn.addEventListener('click', () => {
+                const input = document.createElement('input');
+                input.type = 'file';
+                input.accept = 'application/json,.json';
+                input.addEventListener('change', async () => {
+                    const file = input.files && input.files[0];
+                    if (!file) return;
+                    try {
+                        const text = await file.text();
+                        const res = DataManager.importThemeFromText(mode, text);
+                        if (!res.ok) {
+                            alert(this.t('error.importFailed') || 'Import failed.');
+                            return;
+                        }
+                        modal.remove();
+                        this.showSavedThemesPage(mode);
+                    } catch (err) {
+                        alert(this.t('error.importFailed') || 'Import failed.');
+                    }
+                });
+                input.click();
+            });
+        }
     },
 
     applyThemePalette(colors, isCustom = false) {
