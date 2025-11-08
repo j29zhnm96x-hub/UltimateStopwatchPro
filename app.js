@@ -970,7 +970,47 @@ const Locales = {
         'help.saveTitle': 'Saving Results',
         'help.saveText': 'Save sessions into projects, view details, and calculate metrics later.',
         'help.tipsTitle': 'Tips',
-        'help.tipsText': 'Add to Home Screen for a full-screen experience. Keep the screen awake in settings when charging.',
+        'help.tipsText': 'Add to Home Screen for a full-screen experience. Keep the screen awake in Settings while charging.',
+        'help.indexTitle': 'Help Index',
+        'help.quickStartTitle': 'Quick Start',
+        'help.quickStart1': 'Tap Start to begin. Tap Next to record a lap.',
+        'help.quickStart2': 'Tap Pause to pause, Resume to continue, Stop to finish.',
+        'help.quickStart3': 'Tap Reset to clear after Stop.',
+        'help.keyboardTitle': 'Keyboard Shortcuts',
+        'help.keyEnter': 'Enter: Start / Pause / Resume',
+        'help.keySpace': 'Space: Lap',
+        'help.projectsTitle': 'Projects',
+        'help.projectsText': 'Create projects to organize sessions. Drag folders to reorder. Tap a folder to open.',
+        'help.projectsMenu': 'Folder menu (three dots): rename, choose project color, choose text color, export project, share project (ZIP), delete.',
+        'help.resultsTitle': 'Results',
+        'help.resultsText': 'Open a result to see laps, totals and averages. Record more laps or pause/resume as needed.',
+        'help.resultsRemoveLap': 'Remove a lap: long‑press a lap for ~0.5s, then confirm.',
+        'help.resultsReOrContinue': 'Re‑measure or Continue: when starting from a saved result, choose to continue adding laps or re‑measure from scratch.',
+        'help.attachImage': 'Attach an image to a result via Settings > Upload/Change Image.',
+        'help.calcSectionTitle': 'Calculator & Converters',
+        'help.calcText': 'Use Calculate on a saved result to work by Quantity, Time, or Price. Includes a numeric calculator and a time converter.',
+        'help.exportImportTitle': 'Export & Import',
+        'help.exportProject': 'Export Project: saves a JSON you can back up or share. Images may be embedded when possible.',
+        'help.shareZip': 'Share Project (ZIP): packages JSON with images for easier sharing on supported devices.',
+        'help.importProject': 'Import Project: merge a project from Settings > Import Project.',
+        'help.themesTitle': 'Themes',
+        'help.themesText': 'Toggle light/dark. Long‑press the theme button for 1 second to open Theme Customization.',
+        'help.customThemesTitle': 'Custom Themes',
+        'help.customThemesText': 'Fine‑tune colors, apply, and save themes. In Custom Themes, you can apply, export, or delete themes. Use Import Theme to load themes from a file.',
+        'help.voiceNote': 'Voice control understands English words only: "start", "next", "pause", "resume", "stop", "reset".',
+        'help.settingsTitle': 'Settings',
+        'help.settingsText': 'Language, Units, Currency, Time display & precision, Keep screen awake, Audio volumes, Image upload.',
+        'help.hiddenTitle': 'Hidden actions & gestures',
+        'help.hiddenThemeLongPress': 'Long‑press theme toggle (1s): open Theme Customization.',
+        'help.hiddenLapLongPress': 'Long‑press a lap: quick remove dialog.',
+        'help.hiddenKebab': 'Use the three‑dots menus on folders and results to access extra actions.',
+        'help.shortcutsTitle': 'Shortcuts',
+        'help.tipsMore': 'Add this app to your Home Screen. Enable Keep screen awake for long sessions. On iOS, ensure Silent Mode is off.',
+        'help.troubleshootTitle': 'Troubleshooting',
+        'help.troubleVoice': 'Voice not working: your browser may not support Speech Recognition or the mic is blocked.',
+        'help.troubleImages': 'Images blocked: external images might not embed due to cross‑origin rules. You can export without them.',
+        'help.troubleWake': 'Screen lock: some browsers do not support Screen Wake Lock. Keep the device active or tap periodically.',
+        'help.backToTop': 'Back to top',
         'orientation.title': 'Rotate your device',
         'orientation.message': 'This app works in portrait mode only. Please rotate your device back to portrait.',
         'lap.remove': 'Remove Lap',
@@ -1147,7 +1187,47 @@ const Locales = {
         'help.saveTitle': 'Spremanje rezultata',
         'help.saveText': 'Spremite mjerenja u projekte, pregledajte detalje i naknadno izračunajte metrike.',
         'help.tipsTitle': 'Savjeti',
-        'help.tipsText': 'Dodajte na početni zaslon za cijeli ekran. U postavkama zadržite ekran budnim dok se puni.',
+        'help.tipsText': 'Dodajte na početni zaslon za iskustvo cijelog zaslona. U Postavkama zadržite zaslon budnim tijekom punjenja.',
+        'help.indexTitle': 'Kazalo pomoći',
+        'help.quickStartTitle': 'Brzi početak',
+        'help.quickStart1': 'Pritisnite Start za početak. Pritisnite Next za zapis kruga.',
+        'help.quickStart2': 'Pauza pauzira, Resume nastavlja, Stop završava mjerenje.',
+        'help.quickStart3': 'Reset briše nakon Stop.',
+        'help.keyboardTitle': 'Prečaci tipkovnice',
+        'help.keyEnter': 'Enter: Start / Pauza / Nastavi',
+        'help.keySpace': 'Space: Krug',
+        'help.projectsTitle': 'Projekti',
+        'help.projectsText': 'Kreirajte projekte za organizaciju mjerenja. Povucite mape za promjenu redoslijeda. Dodirnite mapu za otvaranje.',
+        'help.projectsMenu': 'Izbornik mape (tri točkice): preimenuj, odaberi boju projekta, odaberi boju teksta, izvezi projekt, podijeli projekt (ZIP), izbriši.',
+        'help.resultsTitle': 'Rezultati',
+        'help.resultsText': 'Otvorite rezultat za pregled krugova, ukupnog vremena i prosjeka. Dodajte nove krugove ili pauzirajte/nastavite.',
+        'help.resultsRemoveLap': 'Uklanjanje kruga: dulji pritisak na krug (~0.5 s), zatim potvrdi.',
+        'help.resultsReOrContinue': 'Ponovno izmjeri ili Nastavi: pri radu s postojećim rezultatom odaberite nastaviti dodavati krugove ili mjeriti ispočetka.',
+        'help.attachImage': 'Priložite sliku rezultatu putem Postavke > Učitaj/Promijeni sliku.',
+        'help.calcSectionTitle': 'Kalkulator i pretvarači',
+        'help.calcText': 'U spremljenom rezultatu otvorite Izračun za rad po količini, vremenu ili cijeni. Uključuje numerički kalkulator i pretvarač vremena.',
+        'help.exportImportTitle': 'Izvoz i uvoz',
+        'help.exportProject': 'Izvoz projekta: sprema JSON za sigurnosnu kopiju ili dijeljenje. Slike se ugrađuju kad je moguće.',
+        'help.shareZip': 'Dijeli projekt (ZIP): pakira JSON sa slikama za lakše dijeljenje na podržanim uređajima.',
+        'help.importProject': 'Uvoz projekta: spojite projekt preko Postavke > Uvezi projekt.',
+        'help.themesTitle': 'Teme',
+        'help.themesText': 'Prebaci svijetlu/tamnu temu. Dulji pritisak na gumb teme (1 s) otvara prilagodbu teme.',
+        'help.customThemesTitle': 'Prilagođene teme',
+        'help.customThemesText': 'Fino podesite boje, primijenite i spremite teme. U Prilagođenim temama možete primijeniti, izvesti ili izbrisati teme. Koristite Uvezi temu za učitavanje iz datoteke.',
+        'help.voiceNote': 'Glasovno upravljanje razumije samo engleske riječi: "start", "next", "pause", "resume", "stop", "reset".',
+        'help.settingsTitle': 'Postavke',
+        'help.settingsText': 'Jezik, jedinice, valuta, prikaz i preciznost vremena, držanje zaslona budnim, glasnoće zvuka, učitavanje slike.',
+        'help.hiddenTitle': 'Skrivene radnje i geste',
+        'help.hiddenThemeLongPress': 'Dulji pritisak na prebacivanje teme (1 s): otvori prilagodbu teme.',
+        'help.hiddenLapLongPress': 'Dulji pritisak na krug: brzo uklanjanje.',
+        'help.hiddenKebab': 'Izbornik s tri točkice na mapama i rezultatima: dodatne radnje.',
+        'help.shortcutsTitle': 'Prečaci',
+        'help.tipsMore': 'Dodajte aplikaciju na početni zaslon. Uključite držanje zaslona budnim za duge sesije. Na iOS-u isključite Tihi način.',
+        'help.troubleshootTitle': 'Otklanjanje poteškoća',
+        'help.troubleVoice': 'Glas ne radi: preglednik možda ne podržava prepoznavanje govora ili je mikrofon blokiran.',
+        'help.troubleImages': 'Slike blokirane: vanjske slike se možda ne mogu ugraditi zbog CORS ograničenja. Možete izvesti bez njih.',
+        'help.troubleWake': 'Zaključavanje zaslona: neki preglednici ne podržavaju Screen Wake Lock. Držite uređaj aktivnim ili povremeno dodirnite.',
+        'help.backToTop': 'Povratak na vrh',
         'orientation.title': 'Okrenite uređaj',
         'orientation.message': 'Aplikacija radi samo u vertikalnom prikazu. Vratite uređaj u portret.',
         'lap.remove': 'Ukloni krug',
@@ -2450,36 +2530,181 @@ const UI = {
 
     showHelpDialog() {
         const content = `
-            <div class="help-body">
-                <p><strong>${this.t('help.whatTitle')}</strong><br>${this.t('help.whatText')}</p>
-                <hr>
-                <p><strong>${this.t('help.controlsTitle')}</strong><br>${this.t('help.controlsText')}</p>
-                <ul>
-                    <li>${this.t('help.ctrlStart')}</li>
-                    <li>${this.t('help.ctrlNext')}</li>
-                    <li>${this.t('help.ctrlPause')}</li>
-                    <li>${this.t('help.ctrlResume')}</li>
-                    <li>${this.t('help.ctrlStop')}</li>
-                    <li>${this.t('help.ctrlReset')}</li>
-                </ul>
-                <p><strong>${this.t('help.countdownTitle')}</strong><br>${this.t('help.countdownText')}</p>
-                <p><strong>${this.t('help.voiceTitle')}</strong><br>${this.t('help.voiceText')}</p>
-                <p><strong>${this.t('help.soundsTitle')}</strong><br>${this.t('help.soundsText')}</p>
-                <p><strong>${this.t('help.saveTitle')}</strong><br>${this.t('help.saveText')}</p>
-                <p><strong>${this.t('help.tipsTitle')}</strong><br>${this.t('help.tipsText')}</p>
+            <div id="helpTop"></div>
+            <div class="help-layout" style="display:grid;grid-template-columns:260px 1fr;gap:16px;max-height:70vh;">
+                <aside class="help-toc" style="position:sticky;top:0;align-self:start;">
+                    <div style="background:var(--bg-secondary);border:1px solid var(--border);border-radius:10px;padding:12px;">
+                        <div style="font-weight:700;margin-bottom:8px;">${this.t('help.indexTitle')}</div>
+                        <nav id="helpToc" style="display:flex;flex-direction:column;gap:6px;">
+                            <a href="#what" class="toc-link">${this.t('help.whatTitle')}</a>
+                            <a href="#quick-start" class="toc-link">${this.t('help.quickStartTitle')}</a>
+                            <a href="#controls" class="toc-link">${this.t('help.controlsTitle')}</a>
+                            <a href="#keyboard" class="toc-link">${this.t('help.keyboardTitle')}</a>
+                            <a href="#countdown" class="toc-link">${this.t('help.countdownTitle')}</a>
+                            <a href="#voice" class="toc-link">${this.t('help.voiceTitle')}</a>
+                            <a href="#themes" class="toc-link">${this.t('help.themesTitle')}</a>
+                            <a href="#custom-themes" class="toc-link">${this.t('help.customThemesTitle')}</a>
+                            <a href="#projects" class="toc-link">${this.t('help.projectsTitle')}</a>
+                            <a href="#results" class="toc-link">${this.t('help.resultsTitle')}</a>
+                            <a href="#calc" class="toc-link">${this.t('help.calcSectionTitle')}</a>
+                            <a href="#export-import" class="toc-link">${this.t('help.exportImportTitle')}</a>
+                            <a href="#settings" class="toc-link">${this.t('help.settingsTitle')}</a>
+                            <a href="#hidden" class="toc-link">${this.t('help.hiddenTitle')}</a>
+                            <a href="#tips" class="toc-link">${this.t('help.tipsTitle')}</a>
+                            <a href="#troubleshooting" class="toc-link">${this.t('help.troubleshootTitle')}</a>
+                        </nav>
+                    </div>
+                </aside>
+                <main class="help-content-scroll" style="overflow:auto;padding-right:4px;">
+                    <section id="what" class="help-section" style="margin-bottom:20px;">
+                        <h3 style="margin:0 0 8px">${this.t('help.whatTitle')}</h3>
+                        <p style="color:var(--text-secondary)">${this.t('help.whatText')}</p>
+                    </section>
+
+                    <section id="quick-start" class="help-section" style="margin-bottom:20px;">
+                        <h3 style="margin:0 0 8px">${this.t('help.quickStartTitle')}</h3>
+                        <ul>
+                            <li>${this.t('help.quickStart1')}</li>
+                            <li>${this.t('help.quickStart2')}</li>
+                            <li>${this.t('help.quickStart3')}</li>
+                        </ul>
+                    </section>
+
+                    <section id="controls" class="help-section" style="margin-bottom:20px;">
+                        <h3 style="margin:0 0 8px">${this.t('help.controlsTitle')}</h3>
+                        <p style="color:var(--text-secondary)">${this.t('help.controlsText')}</p>
+                        <ul>
+                            <li>${this.t('help.ctrlStart')}</li>
+                            <li>${this.t('help.ctrlNext')}</li>
+                            <li>${this.t('help.ctrlPause')}</li>
+                            <li>${this.t('help.ctrlResume')}</li>
+                            <li>${this.t('help.ctrlStop')}</li>
+                            <li>${this.t('help.ctrlReset')}</li>
+                        </ul>
+                    </section>
+
+                    <section id="keyboard" class="help-section" style="margin-bottom:20px;">
+                        <h3 style="margin:0 0 8px">${this.t('help.keyboardTitle')}</h3>
+                        <ul>
+                            <li>${this.t('help.keyEnter')}</li>
+                            <li>${this.t('help.keySpace')}</li>
+                        </ul>
+                    </section>
+
+                    <section id="countdown" class="help-section" style="margin-bottom:20px;">
+                        <h3 style="margin:0 0 8px">${this.t('help.countdownTitle')}</h3>
+                        <p style="color:var(--text-secondary)">${this.t('help.countdownText')}</p>
+                    </section>
+
+                    <section id="voice" class="help-section" style="margin-bottom:20px;">
+                        <h3 style="margin:0 0 8px">${this.t('help.voiceTitle')}</h3>
+                        <p style="color:var(--text-secondary)">${this.t('help.voiceText')}</p>
+                        <p style="color:var(--text-secondary)">${this.t('help.voiceNote')}</p>
+                    </section>
+
+                    <section id="themes" class="help-section" style="margin-bottom:20px;">
+                        <h3 style="margin:0 0 8px">${this.t('help.themesTitle')}</h3>
+                        <p style="color:var(--text-secondary)">${this.t('help.themesText')}</p>
+                    </section>
+
+                    <section id="custom-themes" class="help-section" style="margin-bottom:20px;">
+                        <h3 style="margin:0 0 8px">${this.t('help.customThemesTitle')}</h3>
+                        <p style="color:var(--text-secondary)">${this.t('help.customThemesText')}</p>
+                    </section>
+
+                    <section id="projects" class="help-section" style="margin-bottom:20px;">
+                        <h3 style="margin:0 0 8px">${this.t('help.projectsTitle')}</h3>
+                        <p style="color:var(--text-secondary)">${this.t('help.projectsText')}</p>
+                        <p style="color:var(--text-secondary)">${this.t('help.projectsMenu')}</p>
+                    </section>
+
+                    <section id="results" class="help-section" style="margin-bottom:20px;">
+                        <h3 style="margin:0 0 8px">${this.t('help.resultsTitle')}</h3>
+                        <p style="color:var(--text-secondary)">${this.t('help.resultsText')}</p>
+                        <ul>
+                            <li>${this.t('help.resultsRemoveLap')}</li>
+                            <li>${this.t('help.resultsReOrContinue')}</li>
+                            <li>${this.t('help.attachImage')}</li>
+                        </ul>
+                    </section>
+
+                    <section id="calc" class="help-section" style="margin-bottom:20px;">
+                        <h3 style="margin:0 0 8px">${this.t('help.calcSectionTitle')}</h3>
+                        <p style="color:var(--text-secondary)">${this.t('help.calcText')}</p>
+                    </section>
+
+                    <section id="export-import" class="help-section" style="margin-bottom:20px;">
+                        <h3 style="margin:0 0 8px">${this.t('help.exportImportTitle')}</h3>
+                        <ul>
+                            <li>${this.t('help.exportProject')}</li>
+                            <li>${this.t('help.shareZip')}</li>
+                            <li>${this.t('help.importProject')}</li>
+                        </ul>
+                    </section>
+
+                    <section id="settings" class="help-section" style="margin-bottom:20px;">
+                        <h3 style="margin:0 0 8px">${this.t('help.settingsTitle')}</h3>
+                        <p style="color:var(--text-secondary)">${this.t('help.settingsText')}</p>
+                    </section>
+
+                    <section id="hidden" class="help-section" style="margin-bottom:20px;">
+                        <h3 style="margin:0 0 8px">${this.t('help.hiddenTitle')}</h3>
+                        <ul>
+                            <li>${this.t('help.hiddenThemeLongPress')}</li>
+                            <li>${this.t('help.hiddenLapLongPress')}</li>
+                            <li>${this.t('help.hiddenKebab')}</li>
+                        </ul>
+                    </section>
+
+                    <section id="tips" class="help-section" style="margin-bottom:20px;">
+                        <h3 style="margin:0 0 8px">${this.t('help.tipsTitle')}</h3>
+                        <p style="color:var(--text-secondary)">${this.t('help.tipsText')}</p>
+                        <p style="color:var(--text-secondary)">${this.t('help.tipsMore')}</p>
+                    </section>
+
+                    <section id="troubleshooting" class="help-section" style="margin-bottom:24px;">
+                        <h3 style="margin:0 0 8px">${this.t('help.troubleshootTitle')}</h3>
+                        <ul>
+                            <li>${this.t('help.troubleVoice')}</li>
+                            <li>${this.t('help.troubleImages')}</li>
+                            <li>${this.t('help.troubleWake')}</li>
+                        </ul>
+                    </section>
+
+                    <div style="text-align:right;margin-top:12px;">
+                        <a href="#helpTop" class="btn btn-secondary" id="helpBackToTop">${this.t('help.backToTop')}</a>
+                    </div>
+                </main>
             </div>`;
         const modal = this.createModal(this.t('help.title'), content);
-    // header X close is provided by createModal; no bottom close button needed
+        const toc = modal.querySelector('#helpToc');
+        const scroller = modal.querySelector('.help-content-scroll');
+        if (toc && scroller) {
+            toc.querySelectorAll('a[href^="#"]').forEach(a => {
+                a.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const sel = a.getAttribute('href');
+                    const target = modal.querySelector(sel);
+                    if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                });
+            });
+        }
+        const backTop = modal.querySelector('#helpBackToTop');
+        if (backTop && scroller) {
+            backTop.addEventListener('click', (e) => {
+                e.preventDefault();
+                const topEl = modal.querySelector('#helpTop');
+                if (topEl) topEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            });
+        }
     },
 
     showRemoveLapDialog(resultId, lapIndex) {
         const result = DataManager.getResults().find(r => r.id === resultId);
         if (!result || !result.laps || lapIndex < 0 || lapIndex >= result.laps.length) return;
-        
         const lap = result.laps[lapIndex];
         const lapNum = lap.number;
         const modalText = this.t('lap.removeText').replace('{number}', lapNum);
-        
         const modal = this.createModal(this.t('lap.removeTitle'), `
             <div class="form-group">
                 <p>${modalText}</p>
@@ -2489,7 +2714,6 @@ const UI = {
                 <button class="btn btn-primary" id="confirmRemoveLapBtn">${this.t('lap.remove')}</button>
             </div>
         `);
-        
         modal.querySelector('#cancelRemoveLapBtn').addEventListener('click', () => modal.remove());
         modal.querySelector('#confirmRemoveLapBtn').addEventListener('click', () => {
             this.removeLap(resultId, lapIndex);
