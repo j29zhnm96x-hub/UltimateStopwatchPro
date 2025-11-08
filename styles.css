@@ -1207,3 +1207,89 @@ main {
     /* FAB: tuck tighter in landscape */
     .fab-container { bottom: 12px; right: 12px; }
 }
+
+/* Help Dialog Layout */
+.help-layout {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    max-height: 70vh;
+}
+
+.help-toc {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px;
+}
+
+.help-toc-title {
+    font-weight: 700;
+    margin-bottom: 8px;
+    font-size: 15px;
+}
+
+.help-toc nav {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.toc-link {
+    color: var(--accent);
+    text-decoration: none;
+    padding: 6px 8px;
+    border-radius: 6px;
+    font-size: 14px;
+    transition: background 0.15s ease;
+}
+
+.toc-link:hover {
+    background: var(--bg-tertiary);
+}
+
+.help-content-scroll {
+    overflow: auto;
+    padding-right: 4px;
+}
+
+.help-section {
+    margin-bottom: 20px;
+}
+
+.help-section h3 {
+    margin: 0 0 8px;
+    font-size: 18px;
+}
+
+.help-section p,
+.help-section ul {
+    color: var(--text-secondary);
+    line-height: 1.5;
+}
+
+.help-section ul {
+    padding-left: 20px;
+    margin-top: 8px;
+}
+
+.help-section li {
+    margin-bottom: 6px;
+}
+
+/* Responsive: two-column layout on larger screens */
+@media (min-width: 768px) {
+    .help-layout {
+        display: grid;
+        grid-template-columns: 260px 1fr;
+        gap: 16px;
+    }
+    
+    .help-toc {
+        position: sticky;
+        top: 0;
+        align-self: start;
+        max-height: 70vh;
+        overflow-y: auto;
+    }
+}

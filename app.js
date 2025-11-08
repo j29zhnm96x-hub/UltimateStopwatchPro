@@ -2531,38 +2531,36 @@ const UI = {
     showHelpDialog() {
         const content = `
             <div id="helpTop"></div>
-            <div class="help-layout" style="display:grid;grid-template-columns:260px 1fr;gap:16px;max-height:70vh;">
-                <aside class="help-toc" style="position:sticky;top:0;align-self:start;">
-                    <div style="background:var(--bg-secondary);border:1px solid var(--border);border-radius:10px;padding:12px;">
-                        <div style="font-weight:700;margin-bottom:8px;">${this.t('help.indexTitle')}</div>
-                        <nav id="helpToc" style="display:flex;flex-direction:column;gap:6px;">
-                            <a href="#what" class="toc-link">${this.t('help.whatTitle')}</a>
-                            <a href="#quick-start" class="toc-link">${this.t('help.quickStartTitle')}</a>
-                            <a href="#controls" class="toc-link">${this.t('help.controlsTitle')}</a>
-                            <a href="#keyboard" class="toc-link">${this.t('help.keyboardTitle')}</a>
-                            <a href="#countdown" class="toc-link">${this.t('help.countdownTitle')}</a>
-                            <a href="#voice" class="toc-link">${this.t('help.voiceTitle')}</a>
-                            <a href="#themes" class="toc-link">${this.t('help.themesTitle')}</a>
-                            <a href="#custom-themes" class="toc-link">${this.t('help.customThemesTitle')}</a>
-                            <a href="#projects" class="toc-link">${this.t('help.projectsTitle')}</a>
-                            <a href="#results" class="toc-link">${this.t('help.resultsTitle')}</a>
-                            <a href="#calc" class="toc-link">${this.t('help.calcSectionTitle')}</a>
-                            <a href="#export-import" class="toc-link">${this.t('help.exportImportTitle')}</a>
-                            <a href="#settings" class="toc-link">${this.t('help.settingsTitle')}</a>
-                            <a href="#hidden" class="toc-link">${this.t('help.hiddenTitle')}</a>
-                            <a href="#tips" class="toc-link">${this.t('help.tipsTitle')}</a>
-                            <a href="#troubleshooting" class="toc-link">${this.t('help.troubleshootTitle')}</a>
-                        </nav>
-                    </div>
+            <div class="help-layout">
+                <aside class="help-toc">
+                    <div class="help-toc-title">${this.t('help.indexTitle')}</div>
+                    <nav id="helpToc">
+                        <a href="#what" class="toc-link">${this.t('help.whatTitle')}</a>
+                        <a href="#quick-start" class="toc-link">${this.t('help.quickStartTitle')}</a>
+                        <a href="#controls" class="toc-link">${this.t('help.controlsTitle')}</a>
+                        <a href="#keyboard" class="toc-link">${this.t('help.keyboardTitle')}</a>
+                        <a href="#countdown" class="toc-link">${this.t('help.countdownTitle')}</a>
+                        <a href="#voice" class="toc-link">${this.t('help.voiceTitle')}</a>
+                        <a href="#themes" class="toc-link">${this.t('help.themesTitle')}</a>
+                        <a href="#custom-themes" class="toc-link">${this.t('help.customThemesTitle')}</a>
+                        <a href="#projects" class="toc-link">${this.t('help.projectsTitle')}</a>
+                        <a href="#results" class="toc-link">${this.t('help.resultsTitle')}</a>
+                        <a href="#calc" class="toc-link">${this.t('help.calcSectionTitle')}</a>
+                        <a href="#export-import" class="toc-link">${this.t('help.exportImportTitle')}</a>
+                        <a href="#settings" class="toc-link">${this.t('help.settingsTitle')}</a>
+                        <a href="#hidden" class="toc-link">${this.t('help.hiddenTitle')}</a>
+                        <a href="#tips" class="toc-link">${this.t('help.tipsTitle')}</a>
+                        <a href="#troubleshooting" class="toc-link">${this.t('help.troubleshootTitle')}</a>
+                    </nav>
                 </aside>
-                <main class="help-content-scroll" style="overflow:auto;padding-right:4px;">
-                    <section id="what" class="help-section" style="margin-bottom:20px;">
-                        <h3 style="margin:0 0 8px">${this.t('help.whatTitle')}</h3>
-                        <p style="color:var(--text-secondary)">${this.t('help.whatText')}</p>
+                <main class="help-content-scroll">
+                    <section id="what" class="help-section">
+                        <h3>${this.t('help.whatTitle')}</h3>
+                        <p>${this.t('help.whatText')}</p>
                     </section>
 
-                    <section id="quick-start" class="help-section" style="margin-bottom:20px;">
-                        <h3 style="margin:0 0 8px">${this.t('help.quickStartTitle')}</h3>
+                    <section id="quick-start" class="help-section">
+                        <h3>${this.t('help.quickStartTitle')}</h3>
                         <ul>
                             <li>${this.t('help.quickStart1')}</li>
                             <li>${this.t('help.quickStart2')}</li>
@@ -2570,9 +2568,9 @@ const UI = {
                         </ul>
                     </section>
 
-                    <section id="controls" class="help-section" style="margin-bottom:20px;">
-                        <h3 style="margin:0 0 8px">${this.t('help.controlsTitle')}</h3>
-                        <p style="color:var(--text-secondary)">${this.t('help.controlsText')}</p>
+                    <section id="controls" class="help-section">
+                        <h3>${this.t('help.controlsTitle')}</h3>
+                        <p>${this.t('help.controlsText')}</p>
                         <ul>
                             <li>${this.t('help.ctrlStart')}</li>
                             <li>${this.t('help.ctrlNext')}</li>
@@ -2583,44 +2581,44 @@ const UI = {
                         </ul>
                     </section>
 
-                    <section id="keyboard" class="help-section" style="margin-bottom:20px;">
-                        <h3 style="margin:0 0 8px">${this.t('help.keyboardTitle')}</h3>
+                    <section id="keyboard" class="help-section">
+                        <h3>${this.t('help.keyboardTitle')}</h3>
                         <ul>
                             <li>${this.t('help.keyEnter')}</li>
                             <li>${this.t('help.keySpace')}</li>
                         </ul>
                     </section>
 
-                    <section id="countdown" class="help-section" style="margin-bottom:20px;">
-                        <h3 style="margin:0 0 8px">${this.t('help.countdownTitle')}</h3>
-                        <p style="color:var(--text-secondary)">${this.t('help.countdownText')}</p>
+                    <section id="countdown" class="help-section">
+                        <h3>${this.t('help.countdownTitle')}</h3>
+                        <p>${this.t('help.countdownText')}</p>
                     </section>
 
-                    <section id="voice" class="help-section" style="margin-bottom:20px;">
-                        <h3 style="margin:0 0 8px">${this.t('help.voiceTitle')}</h3>
-                        <p style="color:var(--text-secondary)">${this.t('help.voiceText')}</p>
-                        <p style="color:var(--text-secondary)">${this.t('help.voiceNote')}</p>
+                    <section id="voice" class="help-section">
+                        <h3>${this.t('help.voiceTitle')}</h3>
+                        <p>${this.t('help.voiceText')}</p>
+                        <p>${this.t('help.voiceNote')}</p>
                     </section>
 
-                    <section id="themes" class="help-section" style="margin-bottom:20px;">
-                        <h3 style="margin:0 0 8px">${this.t('help.themesTitle')}</h3>
-                        <p style="color:var(--text-secondary)">${this.t('help.themesText')}</p>
+                    <section id="themes" class="help-section">
+                        <h3>${this.t('help.themesTitle')}</h3>
+                        <p>${this.t('help.themesText')}</p>
                     </section>
 
-                    <section id="custom-themes" class="help-section" style="margin-bottom:20px;">
-                        <h3 style="margin:0 0 8px">${this.t('help.customThemesTitle')}</h3>
-                        <p style="color:var(--text-secondary)">${this.t('help.customThemesText')}</p>
+                    <section id="custom-themes" class="help-section">
+                        <h3>${this.t('help.customThemesTitle')}</h3>
+                        <p>${this.t('help.customThemesText')}</p>
                     </section>
 
-                    <section id="projects" class="help-section" style="margin-bottom:20px;">
-                        <h3 style="margin:0 0 8px">${this.t('help.projectsTitle')}</h3>
-                        <p style="color:var(--text-secondary)">${this.t('help.projectsText')}</p>
-                        <p style="color:var(--text-secondary)">${this.t('help.projectsMenu')}</p>
+                    <section id="projects" class="help-section">
+                        <h3>${this.t('help.projectsTitle')}</h3>
+                        <p>${this.t('help.projectsText')}</p>
+                        <p>${this.t('help.projectsMenu')}</p>
                     </section>
 
-                    <section id="results" class="help-section" style="margin-bottom:20px;">
-                        <h3 style="margin:0 0 8px">${this.t('help.resultsTitle')}</h3>
-                        <p style="color:var(--text-secondary)">${this.t('help.resultsText')}</p>
+                    <section id="results" class="help-section">
+                        <h3>${this.t('help.resultsTitle')}</h3>
+                        <p>${this.t('help.resultsText')}</p>
                         <ul>
                             <li>${this.t('help.resultsRemoveLap')}</li>
                             <li>${this.t('help.resultsReOrContinue')}</li>
@@ -2628,13 +2626,13 @@ const UI = {
                         </ul>
                     </section>
 
-                    <section id="calc" class="help-section" style="margin-bottom:20px;">
-                        <h3 style="margin:0 0 8px">${this.t('help.calcSectionTitle')}</h3>
-                        <p style="color:var(--text-secondary)">${this.t('help.calcText')}</p>
+                    <section id="calc" class="help-section">
+                        <h3>${this.t('help.calcSectionTitle')}</h3>
+                        <p>${this.t('help.calcText')}</p>
                     </section>
 
-                    <section id="export-import" class="help-section" style="margin-bottom:20px;">
-                        <h3 style="margin:0 0 8px">${this.t('help.exportImportTitle')}</h3>
+                    <section id="export-import" class="help-section">
+                        <h3>${this.t('help.exportImportTitle')}</h3>
                         <ul>
                             <li>${this.t('help.exportProject')}</li>
                             <li>${this.t('help.shareZip')}</li>
@@ -2642,13 +2640,13 @@ const UI = {
                         </ul>
                     </section>
 
-                    <section id="settings" class="help-section" style="margin-bottom:20px;">
-                        <h3 style="margin:0 0 8px">${this.t('help.settingsTitle')}</h3>
-                        <p style="color:var(--text-secondary)">${this.t('help.settingsText')}</p>
+                    <section id="settings" class="help-section">
+                        <h3>${this.t('help.settingsTitle')}</h3>
+                        <p>${this.t('help.settingsText')}</p>
                     </section>
 
-                    <section id="hidden" class="help-section" style="margin-bottom:20px;">
-                        <h3 style="margin:0 0 8px">${this.t('help.hiddenTitle')}</h3>
+                    <section id="hidden" class="help-section">
+                        <h3>${this.t('help.hiddenTitle')}</h3>
                         <ul>
                             <li>${this.t('help.hiddenThemeLongPress')}</li>
                             <li>${this.t('help.hiddenLapLongPress')}</li>
@@ -2656,14 +2654,14 @@ const UI = {
                         </ul>
                     </section>
 
-                    <section id="tips" class="help-section" style="margin-bottom:20px;">
-                        <h3 style="margin:0 0 8px">${this.t('help.tipsTitle')}</h3>
-                        <p style="color:var(--text-secondary)">${this.t('help.tipsText')}</p>
-                        <p style="color:var(--text-secondary)">${this.t('help.tipsMore')}</p>
+                    <section id="tips" class="help-section">
+                        <h3>${this.t('help.tipsTitle')}</h3>
+                        <p>${this.t('help.tipsText')}</p>
+                        <p>${this.t('help.tipsMore')}</p>
                     </section>
 
-                    <section id="troubleshooting" class="help-section" style="margin-bottom:24px;">
-                        <h3 style="margin:0 0 8px">${this.t('help.troubleshootTitle')}</h3>
+                    <section id="troubleshooting" class="help-section">
+                        <h3>${this.t('help.troubleshootTitle')}</h3>
                         <ul>
                             <li>${this.t('help.troubleVoice')}</li>
                             <li>${this.t('help.troubleImages')}</li>
