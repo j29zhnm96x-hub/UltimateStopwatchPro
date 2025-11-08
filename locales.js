@@ -191,4 +191,28 @@
     'export.imageFetchStillFailedTitle': 'Images still blocked',
     'export.imageFetchStillFailedText': 'Some images still could not be fetched. Export without them or cancel.'
   };
+  (function(){
+    var set = function(code, title, message){
+      if (!window.LocalesExtra[code]) window.LocalesExtra[code] = {};
+      window.LocalesExtra[code]['voice.englishOnly'] = title;
+      window.LocalesExtra[code]['voice.englishOnlyMessage'] = message;
+    };
+    set('it','I comandi vocali funzionano solo in inglese','Parla in inglese per usare i comandi vocali: "start", "next", "pause", "resume", "stop", "reset".');
+    set('de','Sprachbefehle funktionieren nur auf Englisch','Bitte sprechen Sie Englisch, um die Sprachsteuerung zu nutzen: "start", "next", "pause", "resume", "stop", "reset".');
+    set('es','Los comandos de voz solo funcionan en inglés','Hable en inglés para usar el control por voz: "start", "next", "pause", "resume", "stop", "reset".');
+    set('pt-BR','Os comandos de voz funcionam apenas em inglês','Fale em inglês para usar o controle por voz: "start", "next", "pause", "resume", "stop", "reset".');
+    set('pt','Os comandos de voz funcionam apenas em inglês','Fale em inglês para usar o controlo por voz: "start", "next", "pause", "resume", "stop", "reset".');
+    set('fr','Les commandes vocales fonctionnent uniquement en anglais','Veuillez parler anglais pour utiliser le contrôle vocal : "start", "next", "pause", "resume", "stop", "reset".');
+    set('ru','Голосовые команды работают только на английском','Пожалуйста, говорите по‑английски, чтобы использовать голосовое управление: "start", "next", "pause", "resume", "stop", "reset".');
+    set('da','Stemmekommandoer fungerer kun på engelsk','Tal venligst engelsk for at bruge stemmestyring: "start", "next", "pause", "resume", "stop", "reset".');
+    set('zh-Hans','语音命令仅支持英文','请使用英文进行语音控制：“start”、“next”、“pause”、“resume”、“stop”、“reset”。');
+    set('uk','Голосові команди працюють лише англійською','Будь ласка, говоріть англійською, щоб користуватися голосовим керуванням: "start", "next", "pause", "resume", "stop", "reset".');
+    set('fi','Äänikomennot toimivat vain englanniksi','Käytä englantia käyttääksesi ääniohjausta: "start", "next", "pause", "resume", "stop", "reset".');
+    set('sv','Röstkommandon fungerar endast på engelska','Tala engelska för att använda röststyrning: "start", "next", "pause", "resume", "stop", "reset".');
+    set('ar','أوامر الصوت تعمل باللغة الإنجليزية فقط','يرجى التحدث بالإنجليزية لاستخدام التحكم الصوتي: "start" و "next" و "pause" و "resume" و "stop" و "reset".');
+    set('hi','वॉइस कमांड केवल अंग्रेजी में काम करते हैं','वॉइस कंट्रोल उपयोग करने के लिए कृपया अंग्रेजी बोलें: "start", "next", "pause", "resume", "stop", "reset".');
+    set('bn','ভয়েস কমান্ড শুধুমাত্র ইংরেজিতে কাজ করে','ভয়েস কন্ট্রোল ব্যবহার করতে ইংরেজিতে বলুন: "start", "next", "pause", "resume", "stop", "reset".');
+    set('ta','குரல் கட்டளைகள் ஆங்கிலத்தில் மட்டுமே செயல்படும்','குரல் கட்டுப்பாட்டைப் பயன்படுத்த ஆங்கிலத்தில் பேசவும்: "start", "next", "pause", "resume", "stop", "reset".');
+    set('pl','Polecenia głosowe działają tylko po angielsku','Aby korzystać ze sterowania głosowego, mów po angielsku: "start", "next", "pause", "resume", "stop", "reset".');
+  })();
 })();

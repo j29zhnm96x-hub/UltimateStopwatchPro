@@ -1221,7 +1221,11 @@ const UI = {
     // i18n helpers
     t(key) {
         const lang = AppState.lang || 'en';
-        return (Locales[lang] && Locales[lang][key]) || (Locales.en && Locales.en[key]) || key;
+        const base = (lang || '').toLowerCase().split('-')[0];
+        return (Locales[lang] && Locales[lang][key])
+            || (Locales[base] && Locales[base][key])
+            || (Locales.en && Locales.en[key])
+            || key;
     },
     applyLanguage() {
         document.documentElement.lang = AppState.lang || 'en';
@@ -1385,9 +1389,8 @@ const UI = {
         }
         const wasEnabled = AppState.voice.enabled;
         AppState.voice.enabled = !AppState.voice.enabled;
-        
-        // Show English-only popup when enabling voice control if app language is not English
-        if (AppState.voice.enabled && !wasEnabled && AppState.lang !== 'en') {
+        const langCode = (AppState.lang || 'en').toLowerCase();
+        if (AppState.voice.enabled && !wasEnabled && !langCode.startsWith('en')) {
             const modal = this.createModal(this.t('voice.englishOnly'), `
                 <div class="form-group">
                     <p>${this.t('voice.englishOnlyMessage')}</p>
@@ -1396,10 +1399,8 @@ const UI = {
                     <button class="btn btn-primary" id="voiceOkBtn">${this.t('action.close')}</button>
                 </div>
             `);
-            modal.querySelector('.modal-content')?.classList.add('pop-animate');
             modal.querySelector('#voiceOkBtn').addEventListener('click', () => modal.remove());
         }
-        
         if (AppState.voice.enabled) {
             this._startVoiceRecognition();
         } else {
@@ -1407,6 +1408,7 @@ const UI = {
         }
         this.renderStopwatch();
     },
+
     _canUseSpeech() {
         return typeof window !== 'undefined' && (window.SpeechRecognition || window.webkitSpeechRecognition);
     },
