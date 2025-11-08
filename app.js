@@ -891,6 +891,8 @@ const Locales = {
         'tooltip.countdown': 'Countdown to start',
         'tooltip.voice': 'Voice control',
         'error.voiceUnsupported': 'Voice control is not supported on this browser.',
+        'voice.englishOnly': 'Voice commands work in English only',
+        'voice.englishOnlyMessage': 'Please speak English to use voice control: "start", "next", "pause", "resume", "stop", "reset".',
         'help.title': 'About & Help',
         'help.whatTitle': 'What is this app?',
         'help.whatText': 'Ultimate Stopwatch helps you time activities with laps, countdown-to-start, voice commands, and project saving.',
@@ -905,7 +907,7 @@ const Locales = {
         'help.countdownTitle': 'Countdown to Start',
         'help.countdownText': 'Tap the timer icon to set 1–10 seconds. Press Start to hear beeps during countdown; at 0 the stopwatch starts.',
         'help.voiceTitle': 'Voice Control',
-        'help.voiceText': 'Enable the mic button to say: “start, next, pause, resume, stop, reset” (also supports Croatian equivalents).',
+        'help.voiceText': 'Enable the mic button to say: "start", "next", "pause", "resume", "stop", "reset" (English only).',
         'help.soundsTitle': 'Sounds',
         'help.soundsText': 'UI clicks and stopwatch actions have distinct sounds. On iOS, ensure volume is up and Silent Mode is off.',
         'help.saveTitle': 'Saving Results',
@@ -1062,6 +1064,8 @@ const Locales = {
         'tooltip.countdown': 'Odbrojavanje prije starta',
         'tooltip.voice': 'Glasovno upravljanje',
         'error.voiceUnsupported': 'Glasovno upravljanje nije podržano u ovom pregledniku.',
+        'voice.englishOnly': 'Glasovne naredbe rade samo na engleskom',
+        'voice.englishOnlyMessage': 'Molimo govorite engleski za glasovno upravljanje: "start", "next", "pause", "resume", "stop", "reset".',
         'help.title': 'O aplikaciji i pomoć',
         'help.whatTitle': 'Što je ova aplikacija?',
         'help.whatText': 'Ultimate Stopwatch pomaže mjeriti vrijeme s krugovima, odbrojavanjem, glasovnim naredbama i spremanjem projekata.',
@@ -1076,7 +1080,7 @@ const Locales = {
         'help.countdownTitle': 'Odbrojavanje prije starta',
         'help.countdownText': 'Dodirnite ikonu tajmera za 1–10 sekundi. Pritisnite Start kako biste čuli beepove; na 0 štoperica kreće.',
         'help.voiceTitle': 'Glasovno upravljanje',
-        'help.voiceText': 'Uključite mikrofon i recite: “start, next, pause, resume, stop, reset” (podržane su i hrvatske riječi).',
+        'help.voiceText': 'Uključite mikrofon i recite: "start", "next", "pause", "resume", "stop", "reset" (samo engleski jezik).',
         'help.soundsTitle': 'Zvukovi',
         'help.soundsText': 'UI klikovi i radnje štoperice imaju različite zvukove. Na iOS-u provjerite glasnoću i isključen Tihi način.',
         'help.saveTitle': 'Spremanje rezultata',
@@ -1379,7 +1383,23 @@ const UI = {
             alert(this.t('error.voiceUnsupported'));
             return;
         }
+        const wasEnabled = AppState.voice.enabled;
         AppState.voice.enabled = !AppState.voice.enabled;
+        
+        // Show English-only popup when enabling voice control if app language is not English
+        if (AppState.voice.enabled && !wasEnabled && AppState.lang !== 'en') {
+            const modal = this.createModal(this.t('voice.englishOnly'), `
+                <div class="form-group">
+                    <p>${this.t('voice.englishOnlyMessage')}</p>
+                </div>
+                <div class="modal-actions">
+                    <button class="btn btn-primary" id="voiceOkBtn">${this.t('action.close')}</button>
+                </div>
+            `);
+            modal.querySelector('.modal-content')?.classList.add('pop-animate');
+            modal.querySelector('#voiceOkBtn').addEventListener('click', () => modal.remove());
+        }
+        
         if (AppState.voice.enabled) {
             this._startVoiceRecognition();
         } else {
@@ -1403,20 +1423,8 @@ const UI = {
         if (AppState.voice.recognizer) return AppState.voice.recognizer;
         const Ctor = window.SpeechRecognition || window.webkitSpeechRecognition;
         const rec = new Ctor();
-        const vLang = AppState.voice.lang;
-        // Prefer explicit voice setting; otherwise use device/browser language; fallback to app language, then en-US
-        let lang = 'en-US';
-        if (vLang && vLang !== 'auto') {
-            lang = vLang;
-        } else {
-            const navLang = (navigator.languages && navigator.languages[0]) || navigator.language || '';
-            if ((navLang && navLang.toLowerCase().startsWith('hr')) || (AppState.lang && AppState.lang.toLowerCase().startsWith('hr'))) {
-                lang = 'hr-HR';
-            } else if (navLang) {
-                lang = navLang;
-            }
-        }
-        rec.lang = lang;
+        // Always use English for voice recognition regardless of app language
+        rec.lang = 'en-US';
         rec.continuous = true;
         rec.interimResults = true; // allow early detection
         rec.maxAlternatives = 1; // faster
