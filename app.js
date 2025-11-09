@@ -2025,6 +2025,8 @@ const UI = {
             }
             this.renderHome();
         });
+        // Touch-friendly reorder for results (mobile/pen)
+        this.initTouchReorderForResults();
     },
 
     handleBackClick() {
@@ -3938,6 +3940,7 @@ const UI = {
         const menu = document.createElement('div');
         menu.className = 'menu-popover';
         menu.innerHTML = `
+            <button class="menu-item" data-action="rename" data-folder-id="${folderId}">${this.t('menu.rename')}</button>
             <button class="menu-item" data-action="color" data-folder-id="${folderId}">${this.t('menu.chooseProjectColor')}</button>
             <button class="menu-item" data-action="text-color" data-folder-id="${folderId}">${this.t('menu.chooseProjectTextColor')}</button>
             <button class="menu-item" data-action="export" data-folder-id="${folderId}">${this.t('action.exportProject')}</button>
@@ -3956,7 +3959,11 @@ const UI = {
             if (!item) return;
             const action = item.dataset.action;
             
-            if (action === 'export') {
+            if (action === 'rename') {
+                this.closeResultMenu();
+                this.showRenameFolderDialog(folderId);
+                return;
+            } else if (action === 'export') {
                 (async () => {
                     const ok = await DataManager.exportProjectJSON(folderId);
                     if (!ok) alert(this.t('error.exportFailed'));
@@ -4100,6 +4107,42 @@ const UI = {
         });
     },
     
+    showRenameFolderDialog(folderId) {
+        const folder = DataManager.getFolders().find(f => f.id === folderId);
+        if (!folder) return;
+        const modal = this.createModal(this.t('rename.projectTitle') || this.t('rename.title'), `
+            <form id="renameFolderForm">
+                <div class="form-group">
+                    <label class="form-label">${this.t('rename.projectName') || this.t('rename.name')}</label>
+                    <input type="text" class="form-input" id="renameFolderInput" required>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-secondary" id="cancelRenameFolderBtn">${this.t('action.cancel')}</button>
+                    <button type="submit" class="btn btn-success">${this.t('action.update')}</button>
+                </div>
+            </form>
+        `, { closeOnOutside: false });
+        const input = modal.querySelector('#renameFolderInput');
+        if (input) {
+            input.value = folder.name || '';
+            setTimeout(() => { input.focus(); input.select(); }, 250);
+        }
+        modal.querySelector('#cancelRenameFolderBtn').addEventListener('click', () => modal.remove());
+        modal.querySelector('#renameFolderForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const name = (input ? input.value : '').trim();
+            if (!name) return;
+            const folders = DataManager.getFolders();
+            const idx = folders.findIndex(f => f.id === folderId);
+            if (idx !== -1) {
+                folders[idx].name = name;
+                DataManager.saveFolders(folders);
+            }
+            modal.remove();
+            this.renderHome();
+        });
+    },
+
     showResultMenu(anchorEl, resultId) {
         this.closeResultMenu();
         const menu = document.createElement('div');
@@ -4251,6 +4294,121 @@ const UI = {
                 return closest;
             }
         }, { offset: null, element: null }).element;
+    },
+
+    initTouchReorderForResults() {
+        if (this._touchReorderResultsInit) return;
+        this._touchReorderResultsInit = true;
+        const container = this.app;
+        let draggingItem = null;
+        let placeholder = null;
+        let ghost = null;
+        let list = null;
+        let startX = 0, startY = 0, baseTop = 0, itemRect = null;
+        let longPressTimer = null;
+
+        const isTouchLike = (e) => e && (e.pointerType === 'touch' || e.pointerType === 'pen');
+
+        const cleanupPressWait = () => {
+            if (longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; }
+        };
+
+        const beginDrag = (item, sx, sy) => {
+            draggingItem = item;
+            itemRect = item.getBoundingClientRect();
+            list = item.closest('.results-list');
+            if (!list) return;
+
+            // Placeholder to keep flow
+            placeholder = document.createElement('div');
+            placeholder.className = 'placeholder-slot';
+            placeholder.style.height = itemRect.height + 'px';
+            list.insertBefore(placeholder, item.nextSibling);
+
+            // Floating ghost
+            ghost = item.cloneNode(true);
+            ghost.classList.add('drag-ghost');
+            Object.assign(ghost.style, {
+                position: 'fixed',
+                left: itemRect.left + 'px',
+                top: itemRect.top + 'px',
+                width: itemRect.width + 'px',
+                height: itemRect.height + 'px',
+                pointerEvents: 'none',
+                zIndex: 10000
+            });
+            document.body.appendChild(ghost);
+
+            // Hide original
+            draggingItem.style.visibility = 'hidden';
+
+            startX = sx; startY = sy; baseTop = itemRect.top;
+            list.style.userSelect = 'none';
+            list.style.touchAction = 'none';
+            if (navigator.vibrate) { try { navigator.vibrate(10); } catch (_) {} }
+
+            const onMove = (ev) => {
+                if (!draggingItem) return;
+                ev.preventDefault();
+                const dy = ev.clientY - startY;
+                ghost.style.transform = `translate3d(0, ${dy}px, 0)`;
+                const midY = baseTop + dy + (itemRect.height / 2);
+                const siblings = Array.from(list.querySelectorAll('.result-item')).filter(el => el !== draggingItem);
+                let beforeEl = null;
+                for (const el of siblings) {
+                    const r = el.getBoundingClientRect();
+                    const center = r.top + r.height / 2;
+                    if (midY < center) { beforeEl = el; break; }
+                }
+                if (beforeEl) list.insertBefore(placeholder, beforeEl); else list.appendChild(placeholder);
+            };
+
+            const onUp = () => {
+                document.removeEventListener('pointermove', onMove, { passive: false });
+                document.removeEventListener('pointerup', onUp);
+                if (!draggingItem) return;
+                list.insertBefore(draggingItem, placeholder);
+                draggingItem.style.visibility = '';
+                if (ghost && ghost.parentNode) ghost.parentNode.removeChild(ghost);
+                if (placeholder && placeholder.parentNode) placeholder.parentNode.removeChild(placeholder);
+                list.style.userSelect = '';
+                list.style.touchAction = '';
+                const ids = Array.from(list.querySelectorAll('.result-item')).map(el => el.dataset.resultId);
+                try { DataManager.setResultsOrder(AppState.currentFolder, ids); } catch (err) { console.error('Persist reorder failed', err); }
+                draggingItem = null; ghost = null; placeholder = null; list = null; itemRect = null;
+            };
+
+            document.addEventListener('pointermove', onMove, { passive: false });
+            document.addEventListener('pointerup', onUp, { once: true });
+        };
+
+        container.addEventListener('pointerdown', (e) => {
+            if (!isTouchLike(e) || e.isPrimary === false) return;
+            const item = e.target && e.target.closest && e.target.closest('.result-item');
+            if (!item) return;
+            const interactive = e.target.closest('button, a, input, textarea, select, .result-menu');
+            if (interactive) return;
+            const hostList = item.closest('.results-list');
+            if (!hostList || hostList.children.length < 2) return;
+
+            const sx = e.clientX, sy = e.clientY;
+            cleanupPressWait();
+            longPressTimer = setTimeout(() => beginDrag(item, sx, sy), 300);
+
+            const cancelIfMove = (ev) => {
+                if (Math.hypot(ev.clientX - sx, ev.clientY - sy) > 8) {
+                    cleanupPressWait();
+                    container.removeEventListener('pointermove', cancelIfMove);
+                    container.removeEventListener('pointerup', cancelPress, { once: true });
+                }
+            };
+            const cancelPress = () => {
+                cleanupPressWait();
+                container.removeEventListener('pointermove', cancelIfMove);
+            };
+            container.addEventListener('pointermove', cancelIfMove);
+            container.addEventListener('pointerup', cancelPress, { once: true });
+        });
     },
 
     async exportSetup() {
