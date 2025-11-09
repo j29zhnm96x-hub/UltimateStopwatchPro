@@ -2373,6 +2373,7 @@ const UI = {
                                 <div class="result-info">
                                     <h3>${Utils.escapeHTML(result.name || '')}</h3>
                                     <div class="result-meta">${result.laps.length} laps • ${Utils.formatTime(result.totalTime)}</div>
+                                    <div class="result-meta">${this.t('stopwatch.avgLap')}: ${Utils.formatTime(Utils.calculateAverage(result.laps))}</div>
                                 </div>
                                 <button class="icon-btn result-menu" data-result-id="${result.id}" aria-label="More">
                                     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
