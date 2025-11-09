@@ -1956,6 +1956,8 @@ const UI = {
             if (e.target.closest('#resetBtn')) { Sound.play('reset'); StopwatchManager.reset(true); return; }
         });
 
+        // Drag & Drop (fallback) when SortableJS is not available
+        if (!window.Sortable) {
         // Drag & Drop for results
         this.app.addEventListener('dragstart', (e) => {
             const item = e.target.closest('.result-item');
@@ -2027,6 +2029,7 @@ const UI = {
         });
         // Touch-friendly reorder for results (mobile/pen)
         this.initTouchReorderForResults();
+        }
     },
 
     handleBackClick() {
@@ -2184,6 +2187,27 @@ const UI = {
                 </div>
             ` : ''}
         `;
+
+        // Initialize Sortable for folders grid
+        if (window.Sortable) {
+            const grid = this.app.querySelector('.folders-grid');
+            if (grid) {
+                try { if (grid._sortable) grid._sortable.destroy(); } catch (_) {}
+                grid._sortable = Sortable.create(grid, {
+                    animation: 150,
+                    draggable: '.folder-card',
+                    chosenClass: 'dragging',
+                    ghostClass: 'dragging',
+                    onEnd: () => {
+                        const ids = Array.from(grid.querySelectorAll('.folder-card')).map(el => el.dataset.folderId);
+                        try { 
+                            DataManager.setFoldersOrder(ids);
+                            localStorage.setItem('as_homeSort', 'manual');
+                        } catch (err) { console.error('Failed to persist folder order', err); }
+                    }
+                });
+            }
+        }
     },
     
     updateTimeDisplay() {
@@ -2309,6 +2333,8 @@ const UI = {
             results = results.slice().sort((a,b) => (a.name||'').localeCompare(b.name||''));
         } else if (sortPref === 'newest') {
             results = results.slice().sort((a,b) => new Date(b.createdAt||0) - new Date(a.createdAt||0));
+        } else if (sortPref === 'manual') {
+            results = results.slice().sort((a,b) => (a.position ?? 999999) - (b.position ?? 999999));
         }
         const folderColor = folder.color || 'var(--bg-secondary)';
         const textColor = folder.textColor || null;
@@ -2368,6 +2394,27 @@ const UI = {
                 </div>
             ` : ''}
         `;
+
+        // Initialize Sortable for results list
+        if (window.Sortable) {
+            const list = this.app.querySelector('.results-list');
+            if (list) {
+                try { if (list._sortable) list._sortable.destroy(); } catch (_) {}
+                list._sortable = Sortable.create(list, {
+                    animation: 150,
+                    draggable: '.result-item',
+                    chosenClass: 'dragging',
+                    ghostClass: 'dragging',
+                    onEnd: () => {
+                        const ids = Array.from(list.querySelectorAll('.result-item')).map(el => el.dataset.resultId);
+                        try { 
+                            DataManager.setResultsOrder(AppState.currentFolder, ids);
+                            localStorage.setItem('as_folderSort_' + AppState.currentFolder, 'manual');
+                        } catch (err) { console.error('Failed to persist order', err); }
+                    }
+                });
+            }
+        }
     },
     
     renderResultDetail(resultId) {
