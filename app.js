@@ -3002,6 +3002,7 @@ const UI = {
             }
         });
     },
+    
     showCalculateModal(result) {
         const avgLapTime = Utils.calculateAverage(result.laps);
         const avgSeconds = avgLapTime / 1000;
@@ -3011,6 +3012,7 @@ const UI = {
                 <button class="calc-tab active" data-tab="quantity">${this.t('calc.tab.quantity')}</button>
                 <button class="calc-tab" data-tab="time">${this.t('calc.tab.time')}</button>
                 <button class="calc-tab" data-tab="price">${this.t('calc.tab.price')}</button>
+                <button class="calc-tab" data-tab="wage">${this.t('calc.tab.wageByPrice') || this.t('calc.hourlyWage')}</button>
             </div>
             <div id="quantityPanel">
                 <div class="calc-result hidden" id="quantityResult">
@@ -3053,10 +3055,21 @@ const UI = {
                 </div>
                 <button class="btn btn-primary btn-block" id="calcPriceBtn">${this.t('action.calculate')}</button>
             </div>
+            <div id="wagePanel" class="hidden">
+                <div class="calc-result hidden" id="wageResult">
+                    <div class="calc-result-label">${this.t('calc.hourlyWage')} (${AppState.currency})</div>
+                    <div class="calc-result-value" id="wageValue"></div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">${this.t('calc.pricePerPiece')} (${AppState.currency})</label>
+                    <input type="number" inputmode="decimal" class="form-input" id="priceInput" min="0" step="0.01" value="">
+                </div>
+                <button class="btn btn-primary btn-block" id="calcWageBtn">${this.t('action.calculate')}</button>
+            </div>
         `);
         
         const tabs = modal.querySelectorAll('.calc-tab');
-        const panels = { quantity: modal.querySelector('#quantityPanel'), time: modal.querySelector('#timePanel'), price: modal.querySelector('#pricePanel') };
+        const panels = { quantity: modal.querySelector('#quantityPanel'), time: modal.querySelector('#timePanel'), price: modal.querySelector('#pricePanel'), wage: modal.querySelector('#wagePanel') };
         const mem = AppState.calcMemory[result.id] || (AppState.calcMemory[result.id] = {});
         
         tabs.forEach(tab => {
@@ -3126,7 +3139,24 @@ const UI = {
             }
         });
         
-    // header X close is provided by createModal; no bottom close button needed
+        let lastWageValue = null;
+        const priceInput = modal.querySelector('#priceInput');
+        const calcWageBtn = modal.querySelector('#calcWageBtn');
+        if (calcWageBtn) {
+            calcWageBtn.addEventListener('click', () => {
+                const price = parseFloat(priceInput.value);
+                if (price) {
+                    const wage = avgSeconds > 0 ? (price / avgSeconds) * 3600 : 0;
+                    lastWageValue = wage;
+                    const out = modal.querySelector('#wageValue');
+                    if (out) out.textContent = AppState.currency + ' ' + wage.toFixed(2);
+                    const box = modal.querySelector('#wageResult');
+                    if (box) box.classList.remove('hidden');
+                    DataManager.updateResult(result.id, { hourlyWage: wage });
+                    mem.wage = { pricePerPiece: price, hourlyWage: wage };
+                }
+            });
+        }
 
         // Long-press helpers
         const setupLongPress = (el, handler, delay = 650) => {
@@ -3156,6 +3186,14 @@ const UI = {
             const raw = (lastPriceValue != null) ? lastPriceValue : parseFloat(txt.replace(/[^0-9.\-]/g, '')) || 0;
             const num = Number(raw.toFixed(2));
             this.showNumericCalculator(num, null, this.t('calc.tab.price'));
+        });
+        
+        // Wage panel: long-press wage -> numeric calculator
+        setupLongPress(modal.querySelector('#wageValue'), () => {
+            const txt = (modal.querySelector('#wageValue')?.textContent || '').replace(/[^0-9.\-]/g, '');
+            const raw = (lastWageValue != null) ? lastWageValue : parseFloat(txt) || 0;
+            const num = Number(raw.toFixed(2));
+            this.showNumericCalculator(num, null, this.t('calc.hourlyWage'));
         });
 
         // Quantity panel: long-press estimated total time -> converter
@@ -3195,6 +3233,17 @@ const UI = {
                     lastPriceValue = mem.price.pricePerPiece;
                     const pv = modal.querySelector('#priceValue');
                     if (pv) { pv.textContent = AppState.currency + ' ' + lastPriceValue.toFixed(2); pv.parentElement?.classList?.remove('hidden'); }
+                }
+            }
+            if (mem.wage) {
+                if (typeof mem.wage.pricePerPiece === 'number') {
+                    const v = mem.wage.pricePerPiece;
+                    if (priceInput) priceInput.value = (typeof v === 'number') ? String(v.toFixed(2)).replace(/\.00$/, '') : String(v);
+                }
+                if (typeof mem.wage.hourlyWage === 'number') {
+                    lastWageValue = mem.wage.hourlyWage;
+                    const wv = modal.querySelector('#wageValue');
+                    if (wv) { wv.textContent = AppState.currency + ' ' + lastWageValue.toFixed(2); wv.parentElement?.classList?.remove('hidden'); }
                 }
             }
         } catch (e) { /* ignore */ }
