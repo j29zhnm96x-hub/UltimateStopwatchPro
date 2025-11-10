@@ -3007,6 +3007,7 @@ const UI = {
     showCalculateModal(result) {
         const avgLapTime = Utils.calculateAverage(result.laps);
         const avgSeconds = avgLapTime / 1000;
+        const itemsPerRound = Math.max(1, parseInt(result.itemsPerRound || '1')) || 1;
         
         const modal = this.createModal(this.t('calc.title'), `
             <div class="calc-tabs">
@@ -3019,10 +3020,17 @@ const UI = {
                 <div class="calc-result hidden" id="quantityResult">
                     <div class="calc-result-label">${this.t('calc.estimatedTotalTime')}</div>
                     <div class="calc-result-value" id="quantityValue"></div>
+                    <div class="calc-result-note" id="quantityRoundsNote" style="display:none;font-size:12px;color:var(--text-secondary);margin-top:6px;"></div>
                 </div>
                 <div class="form-group">
                     <label class="form-label">${this.t('calc.numberOfItems')}</label>
                     <input type="number" inputmode="numeric" class="form-input" id="quantityInput" min="1" value="100">
+                </div>
+                <div class="form-group">
+                    <label class="form-label" style="display:flex;align-items:center;gap:8px;">
+                        <input type="checkbox" id="asRoundsToggle"/>
+                        ${this.t('calc.inputAsRounds') || 'Input as Rounds?'}
+                    </label>
                 </div>
                 <button class="btn btn-primary btn-block" id="calcQuantityBtn">${this.t('action.calculate')}</button>
             </div>
@@ -3030,6 +3038,7 @@ const UI = {
                 <div class="calc-result hidden" id="timeResult">
                     <div class="calc-result-label">${this.t('calc.estimatedQuantity')}</div>
                     <div class="calc-result-value" id="timeValue"></div>
+                    <div class="calc-result-note" id="timeRoundsNote" style="display:none;font-size:12px;color:var(--text-secondary);margin-top:6px;"></div>
                 </div>
                 <div class="form-group">
                     <label class="form-label">${this.t('calc.duration')}</label>
@@ -3084,12 +3093,26 @@ const UI = {
         
         let lastQuantityTotalMs = 0;
         modal.querySelector('#calcQuantityBtn').addEventListener('click', () => {
-            const quantity = parseInt(modal.querySelector('#quantityInput').value);
-            const totalMs = quantity * avgLapTime;
+            const qEl = modal.querySelector('#quantityInput');
+            const asRoundsEl = modal.querySelector('#asRoundsToggle');
+            const quantity = parseInt(qEl.value);
+            const isRounds = !!(asRoundsEl && asRoundsEl.checked && itemsPerRound > 1);
+            const realQty = isNaN(quantity) ? 0 : (isRounds ? quantity * itemsPerRound : quantity);
+            const totalMs = realQty * avgLapTime;
             lastQuantityTotalMs = totalMs;
             modal.querySelector('#quantityValue').textContent = Utils.formatTime(totalMs);
             modal.querySelector('#quantityResult').classList.remove('hidden');
-            mem.quantity = { totalMs, quantity };
+            const noteEl = modal.querySelector('#quantityRoundsNote');
+            if (noteEl) {
+                if (isRounds) {
+                    const tmpl = this.t('calc.thatsXRounds') || "That's {0} rounds";
+                    noteEl.textContent = tmpl.replace('{0}', String(quantity));
+                    noteEl.style.display = '';
+                } else {
+                    noteEl.style.display = 'none';
+                }
+            }
+            mem.quantity = { totalMs, quantity, asRounds: !!(asRoundsEl && asRoundsEl.checked) };
         });
         
         const hoursEl = modal.querySelector('#hoursInput');
@@ -3122,6 +3145,17 @@ const UI = {
             lastEstimatedQuantity = quantity;
             modal.querySelector('#timeValue').textContent = String(quantity);
             modal.querySelector('#timeResult').classList.remove('hidden');
+            const note2 = modal.querySelector('#timeRoundsNote');
+            if (note2) {
+                if (itemsPerRound > 1) {
+                    const rounds = itemsPerRound > 0 ? (quantity / itemsPerRound) : 0;
+                    const tmpl2 = this.t('calc.orYRounds') || 'or {0} rounds';
+                    note2.textContent = tmpl2.replace('{0}', rounds.toFixed(2));
+                    note2.style.display = '';
+                } else {
+                    note2.style.display = 'none';
+                }
+            }
             const h = parseInt(hoursEl.value||'0')||0; const m = parseInt(minutesEl.value||'0')||0; const s = parseInt(secondsEl.value||'0')||0;
             mem.time = { h, m, s, estimatedQuantity: quantity };
         });
@@ -3216,6 +3250,18 @@ const UI = {
                 }
                 const qi = modal.querySelector('#quantityInput');
                 if (qi && mem.quantity.quantity != null) qi.value = mem.quantity.quantity;
+                const asT = modal.querySelector('#asRoundsToggle');
+                if (asT) asT.checked = !!mem.quantity.asRounds;
+                const noteEl = modal.querySelector('#quantityRoundsNote');
+                if (noteEl) {
+                    if (asT && asT.checked && itemsPerRound > 1 && typeof mem.quantity.quantity !== 'undefined') {
+                        const tmpl = this.t('calc.thatsXRounds') || "That's {0} rounds";
+                        noteEl.textContent = tmpl.replace('{0}', String(mem.quantity.quantity));
+                        noteEl.style.display = '';
+                    } else {
+                        noteEl.style.display = 'none';
+                    }
+                }
             }
             if (mem.time) {
                 if (typeof mem.time.h === 'number') hoursEl.value = mem.time.h;
@@ -3226,14 +3272,25 @@ const UI = {
                     lastEstimatedQuantity = mem.time.estimatedQuantity;
                     const tv = modal.querySelector('#timeValue');
                     if (tv) { tv.textContent = String(lastEstimatedQuantity); tv.parentElement?.classList?.remove('hidden'); }
+                    const note2 = modal.querySelector('#timeRoundsNote');
+                    if (note2) {
+                        if (itemsPerRound > 1) {
+                            const rounds = lastEstimatedQuantity / itemsPerRound;
+                            const tmpl2 = this.t('calc.orYRounds') || 'or {0} rounds';
+                            note2.textContent = tmpl2.replace('{0}', rounds.toFixed(2));
+                            note2.style.display = '';
+                        } else {
+                            note2.style.display = 'none';
+                        }
+                    }
                 }
             }
             if (mem.price) {
                 if (typeof mem.price.wage === 'number') wageInput.value = String(mem.price.wage);
                 if (typeof mem.price.pricePerPiece === 'number') {
                     lastPriceValue = mem.price.pricePerPiece;
-                    const pv = modal.querySelector('#priceValue');
-                    if (pv) { pv.textContent = AppState.currency + ' ' + lastPriceValue.toFixed(2); pv.parentElement?.classList?.remove('hidden'); }
+                    modal.querySelector('#priceValue').textContent = AppState.currency + ' ' + lastPriceValue.toFixed(2);
+                    modal.querySelector('#priceResult').classList.remove('hidden');
                 }
             }
             if (mem.wage) {
@@ -3453,6 +3510,8 @@ const UI = {
                 </div>
             `;
         } else if (view === 'result') {
+            const curr = DataManager.getResults().find(r => r.id === AppState.currentResult);
+            const ipr = Math.max(1, parseInt((curr && curr.itemsPerRound) || '1')) || 1;
             body = `
                 <div class="form-group">
                     <label class="form-label">${this.t('settings.timeDisplay')}</label>
@@ -3464,6 +3523,10 @@ const UI = {
                 <div class="form-group">
                     <label class="form-label">${this.t('settings.precision')}</label>
                     <label><input type="checkbox" id="showHundredths" ${AppState.display.showHundredths ? 'checked' : ''}/> ${this.t('settings.showHundredths')}</label>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">${this.t('settings.itemsPerRound') || 'Items per Round'}</label>
+                    <input type="number" inputmode="numeric" class="form-input" id="itemsPerRoundInput" min="1" step="1" value="${ipr}">
                 </div>
                 <hr style="margin:20px 0;border:none;border-top:2px solid var(--border);"/>
                 <div class="menu-list">
@@ -3568,6 +3631,17 @@ const UI = {
                 modal.remove();
                 this.showResultImageDialog(AppState.currentResult);
             });
+        }
+        const iprEl = modal.querySelector('#itemsPerRoundInput');
+        if (iprEl) {
+            const saveIpr = () => {
+                let v = parseInt(iprEl.value);
+                if (!v || v < 1) v = 1;
+                iprEl.value = v;
+                DataManager.updateResult(AppState.currentResult, { itemsPerRound: v });
+            };
+            iprEl.addEventListener('change', saveIpr);
+            iprEl.addEventListener('blur', saveIpr);
         }
         const timeModeRadios = modal.querySelectorAll('input[name="timeMode"]');
         if (timeModeRadios.length) {

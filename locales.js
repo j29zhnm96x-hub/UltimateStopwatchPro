@@ -187,6 +187,10 @@
   window.LocalesExtra['en'] = {
     'export.imageFetchFailedTitle': 'Unable to include images',
     'calc.tab.wageByPrice': 'Wage',
+    'settings.itemsPerRound': 'Items per Round',
+    'calc.inputAsRounds': 'Input as Rounds?',
+    'calc.thatsXRounds': "That's {0} rounds",
+    'calc.orYRounds': 'or {0} rounds',
     'export.imageFetchFailedText': 'Some images could not be fetched due to cross-origin restrictions or network errors. You can retry, export without these images, or cancel.',
     'export.exportWithoutImages': 'Export without these images',
     'export.imageFetchStillFailedTitle': 'Images still blocked',
