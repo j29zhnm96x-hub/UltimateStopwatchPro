@@ -1295,16 +1295,16 @@ main {
 /* Responsive: two-column layout on larger screens */
 @media (min-width: 768px) {
     .help-layout {
-        display: grid;
-        grid-template-columns: 260px 1fr;
+        display: flex;
+        flex-direction: column;
         gap: 16px;
     }
-    
+
     .help-toc {
-        position: sticky;
-        top: 0;
-        align-self: start;
-        max-height: 70vh;
-        overflow-y: auto;
+        position: static;
+        top: auto;
+        align-self: stretch;
+        max-height: none;
+        overflow-y: visible;
     }
 }

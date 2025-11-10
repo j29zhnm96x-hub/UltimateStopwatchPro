@@ -952,9 +952,9 @@ const Locales = {
         'voice.englishOnlyMessage': 'Please speak English to use voice control: "start", "next", "pause", "resume", "stop", "reset".',
         'help.title': 'About & Help',
         'help.whatTitle': 'What is this app?',
-        'help.whatText': 'Ultimate Stopwatch helps you time activities with laps, countdown-to-start, voice commands, and project saving.',
+        'help.whatText': 'Ultimate Stopwatch is a precision timing tool for repeatable activities. Record laps with millisecond precision, start with a configurable countdown, control hands-free with voice (English), and organize your sessions into projects. Use the built-in calculator to forecast time, quantity, and pricing from your real averages.',
         'help.controlsTitle': 'Core Controls',
-        'help.controlsText': 'Use the Start, Next (Lap), Pause, Resume, Stop, and Reset buttons to control the stopwatch. Keyboard: Enter (Start/Pause/Resume), Space (Lap).',
+        'help.controlsText': 'Use Start, Next (Lap), Pause, Resume, Stop, and Reset to control the stopwatch. Keyboard shortcuts: Enter toggles Start/Pause/Resume, Space records a Lap. A countdown (if set) runs before timing begins.',
         'help.ctrlStart': 'Start: Begins timing. If countdown is set, it will count down first.',
         'help.ctrlNext': 'Next (Lap): Records a lap without stopping the timer.',
         'help.ctrlPause': 'Pause: Pauses the stopwatch.',
@@ -962,9 +962,9 @@ const Locales = {
         'help.ctrlStop': 'Stop: Stops timing. You can save the result.',
         'help.ctrlReset': 'Reset: Resets the stopwatch to zero (after Stop).',
         'help.countdownTitle': 'Countdown to Start',
-        'help.countdownText': 'Tap the timer icon to set 1–10 seconds. Press Start to hear beeps during countdown; at 0 the stopwatch starts.',
+        'help.countdownText': 'Tap the timer icon to set 1–10 seconds. Press Start to begin the audible countdown; at 0 the stopwatch starts automatically. This helps you get ready hands-free and ensures consistent starts.',
         'help.voiceTitle': 'Voice Control',
-        'help.voiceText': 'Enable the mic button to say: "start", "next", "pause", "resume", "stop", "reset" (English only).',
+        'help.voiceText': 'Enable the mic to control the stopwatch with: "start", "next", "pause", "resume", "stop", "reset" (English only). Grant microphone permission when prompted. Tip: keep background noise low for best recognition.',
         'help.soundsTitle': 'Sounds',
         'help.soundsText': 'UI clicks and stopwatch actions have distinct sounds. On iOS, ensure volume is up and Silent Mode is off.',
         'help.saveTitle': 'Saving Results',
@@ -980,15 +980,27 @@ const Locales = {
         'help.keyEnter': 'Enter: Start / Pause / Resume',
         'help.keySpace': 'Space: Lap',
         'help.projectsTitle': 'Projects',
-        'help.projectsText': 'Create projects to organize sessions. Drag folders to reorder. Tap a folder to open.',
+        'help.projectsText': 'Create projects to organize sessions by activity or client. Tap + on Home to add a project. Drag projects to reorder. Tap a project to open it.',
         'help.projectsMenu': 'Folder menu (three dots): rename, choose project color, choose text color, export project, share project (ZIP), delete.',
         'help.resultsTitle': 'Results',
-        'help.resultsText': 'Open a result to see laps, totals and averages. Record more laps or pause/resume as needed.',
+        'help.resultsText': 'Open a result to see laps, total and average time, and summaries. Continue a session, pause/resume, or add more laps. Long‑press a lap to remove.',
         'help.resultsRemoveLap': 'Remove a lap: long‑press a lap for ~0.5s, then confirm.',
         'help.resultsReOrContinue': 'Re‑measure or Continue: when starting from a saved result, choose to continue adding laps or re‑measure from scratch.',
         'help.attachImage': 'Attach an image to a result via Settings > Upload/Change Image.',
         'help.calcSectionTitle': 'Calculator & Converters',
-        'help.calcText': 'Use Calculate on a saved result to work by Quantity, Time, or Price. Includes a numeric calculator and a time converter.',
+        'help.calcText': 'Open Calculate on any saved result to turn your average lap time into forecasts. Choose by Quantity, Time, Price, or Wage. Notes show helpful round conversions when applicable.',
+        'help.calcQuantity': 'Quantity: Enter the number of items to estimate total time. Toggle “Input as Rounds” to enter rounds instead of items; the app multiplies by Items per Round.',
+        'help.calcTime': 'Time: Enter a duration (h:m:s) to estimate how many items you can complete. If Items per Round is set, you will also see how many rounds that equals.',
+        'help.calcPrice': 'Price: Given an hourly wage, estimate the price per piece from your average pace. Uses the currency selected in Settings.',
+        'help.calcWage': 'Wage: Enter your target price per piece to estimate the implied hourly wage at your average pace.',
+        'help.calcLongPress': 'Tips: Long‑press outputs to open tools. On Quantity, long‑press the estimated total time to open the time converter. On Time, Price, and Wage, long‑press the value to open the numeric calculator for quick adjustments.',
+        'help.itemsPerRoundHelp': 'Items per Round: A per‑result setting that defines how many items are completed in one round (set in Result Settings). It enables “Input as Rounds” and improves Quantity/Time calculations.',
+        'help.avgLapCard': 'Average lap is shown on result cards for quick comparison in a project.',
+        'help.resultsReorder': 'Reorder results in a project by dragging and dropping.',
+        'help.homeSort': 'Home sorting can be set to Manual (drag), A–Z, or Newest first in Settings.',
+        'help.folderSort': 'Within a project, choose Result sorting (Newest or A–Z) from the project Settings.',
+        'help.exportSetupHelp': 'Backup & Restore: from Settings you can Export or Import the complete app setup, including projects and settings.',
+        'help.imageNote': 'Note: images are embedded where possible; Share Project (ZIP) bundles them for reliable sharing.',
         'help.exportImportTitle': 'Export & Import',
         'help.exportProject': 'Export Project: saves a JSON you can back up or share. Images may be embedded when possible.',
         'help.shareZip': 'Share Project (ZIP): packages JSON with images for easier sharing on supported devices.',
@@ -999,7 +1011,7 @@ const Locales = {
         'help.customThemesText': 'Fine‑tune colors, apply, and save themes. In Custom Themes, you can apply, export, or delete themes. Use Import Theme to load themes from a file.',
         'help.voiceNote': 'Voice control understands English words only: "start", "next", "pause", "resume", "stop", "reset".',
         'help.settingsTitle': 'Settings',
-        'help.settingsText': 'Language, Units, Currency, Time display & precision, Keep screen awake, Audio volumes, Image upload.',
+        'help.settingsText': 'Language, Units, Currency, Time display & precision, Keep screen awake, Audio volumes, and Image upload. Per‑result settings like Items per Round live in Result Settings.',
         'help.hiddenTitle': 'Hidden actions & gestures',
         'help.hiddenThemeLongPress': 'Long‑press theme toggle (1s): open Theme Customization.',
         'help.hiddenLapLongPress': 'Long‑press a lap: quick remove dialog.',
@@ -1205,7 +1217,19 @@ const Locales = {
         'help.resultsReOrContinue': 'Ponovno izmjeri ili Nastavi: pri radu s postojećim rezultatom odaberite nastaviti dodavati krugove ili mjeriti ispočetka.',
         'help.attachImage': 'Priložite sliku rezultatu putem Postavke > Učitaj/Promijeni sliku.',
         'help.calcSectionTitle': 'Kalkulator i pretvarači',
-        'help.calcText': 'U spremljenom rezultatu otvorite Izračun za rad po količini, vremenu ili cijeni. Uključuje numerički kalkulator i pretvarač vremena.',
+        'help.calcText': 'U spremljenom rezultatu otvorite Izračun i pretvorite prosječno vrijeme kruga u procjene. Birajte Količina, Vrijeme, Cijena ili Satnica. Bilješke prikazuju korisne konverzije krugova kada je primjenjivo.',
+        'help.calcQuantity': 'Količina: unesite broj komada za procjenu ukupnog vremena. Uključite “Unos kao runde” kako biste unosili runde umjesto komada; aplikacija množi s Artikli po rundi.',
+        'help.calcTime': 'Vrijeme: unesite trajanje (h:m:s) za procjenu koliko komada možete izraditi. Ako je postavljeno Artikli po rundi, vidjet ćete i koliko je to rundi.',
+        'help.calcPrice': 'Cijena: uz zadanu satnicu procijenite cijenu po komadu na temelju prosječnog tempa. Koristi valutu iz Postavki.',
+        'help.calcWage': 'Satnica: unesite željenu cijenu po komadu kako biste procijenili pripadajuću satnicu na vaš prosjek.',
+        'help.calcLongPress': 'Savjet: dulji pritisak otvara alate. U Količini, dulji pritisak na procijenjeno ukupno vrijeme otvara pretvarač vremena. U Vrijeme, Cijena i Satnica, dulji pritisak otvara numerički kalkulator.',
+        'help.itemsPerRoundHelp': 'Artikli po rundi: postavka na razini rezultata koja definira koliko komada se odradi u jednoj rundi (u Postavkama rezultata). Omogućuje unos kao runde i poboljšava izračune Količina/Vrijeme.',
+        'help.avgLapCard': 'Prosječni krug prikazan je na karticama rezultata za brzu usporedbu unutar projekta.',
+        'help.resultsReorder': 'Promijenite redoslijed rezultata u projektu povlačenjem.',
+        'help.homeSort': 'Sortiranje početne stranice: Ručno (povlačenje), A–Ž ili Najnovije prvo u Postavkama.',
+        'help.folderSort': 'Unutar projekta odaberite sortiranje rezultata (Najnovije ili A–Ž) u postavkama projekta.',
+        'help.exportSetupHelp': 'Sigurnosna kopija i vraćanje: u Postavkama izvezite ili uvezite cjelokupnu postavu aplikacije, uključujući projekte i postavke.',
+        'help.imageNote': 'Napomena: slike se ugrađuju kada je moguće; Dijeli projekt (ZIP) ih pakira za pouzdano dijeljenje.',
         'help.exportImportTitle': 'Izvoz i uvoz',
         'help.exportProject': 'Izvoz projekta: sprema JSON za sigurnosnu kopiju ili dijeljenje. Slike se ugrađuju kad je moguće.',
         'help.shareZip': 'Dijeli projekt (ZIP): pakira JSON sa slikama za lakše dijeljenje na podržanim uređajima.',
@@ -2582,15 +2606,18 @@ const UI = {
         const content = `
             <div id="helpTop"></div>
             <div class="help-layout">
-                <aside class="help-toc">
-                    <div class="help-toc-title">${this.t('help.indexTitle')}</div>
-                    <nav id="helpToc">
+                <div class="help-content-scroll">
+                    <div class="help-toc">
+                        <div class="help-toc-title">${this.t('help.indexTitle')}</div>
+                        <nav id="helpToc">
                         <a href="#what" class="toc-link">${this.t('help.whatTitle')}</a>
                         <a href="#quick-start" class="toc-link">${this.t('help.quickStartTitle')}</a>
                         <a href="#controls" class="toc-link">${this.t('help.controlsTitle')}</a>
                         <a href="#keyboard" class="toc-link">${this.t('help.keyboardTitle')}</a>
+                        <a href="#save" class="toc-link">${this.t('help.saveTitle')}</a>
                         <a href="#countdown" class="toc-link">${this.t('help.countdownTitle')}</a>
                         <a href="#voice" class="toc-link">${this.t('help.voiceTitle')}</a>
+                        <a href="#sounds" class="toc-link">${this.t('help.soundsTitle')}</a>
                         <a href="#themes" class="toc-link">${this.t('help.themesTitle')}</a>
                         <a href="#custom-themes" class="toc-link">${this.t('help.customThemesTitle')}</a>
                         <a href="#projects" class="toc-link">${this.t('help.projectsTitle')}</a>
@@ -2602,8 +2629,7 @@ const UI = {
                         <a href="#tips" class="toc-link">${this.t('help.tipsTitle')}</a>
                         <a href="#troubleshooting" class="toc-link">${this.t('help.troubleshootTitle')}</a>
                     </nav>
-                </aside>
-                <main class="help-content-scroll">
+                    </div>
                     <section id="what" class="help-section">
                         <h3>${this.t('help.whatTitle')}</h3>
                         <p>${this.t('help.whatText')}</p>
@@ -2639,6 +2665,11 @@ const UI = {
                         </ul>
                     </section>
 
+                    <section id="save" class="help-section">
+                        <h3>${this.t('help.saveTitle')}</h3>
+                        <p>${this.t('help.saveText')}</p>
+                    </section>
+
                     <section id="countdown" class="help-section">
                         <h3>${this.t('help.countdownTitle')}</h3>
                         <p>${this.t('help.countdownText')}</p>
@@ -2648,6 +2679,11 @@ const UI = {
                         <h3>${this.t('help.voiceTitle')}</h3>
                         <p>${this.t('help.voiceText')}</p>
                         <p>${this.t('help.voiceNote')}</p>
+                    </section>
+
+                    <section id="sounds" class="help-section">
+                        <h3>${this.t('help.soundsTitle')}</h3>
+                        <p>${this.t('help.soundsText')}</p>
                     </section>
 
                     <section id="themes" class="help-section">
@@ -2664,6 +2700,10 @@ const UI = {
                         <h3>${this.t('help.projectsTitle')}</h3>
                         <p>${this.t('help.projectsText')}</p>
                         <p>${this.t('help.projectsMenu')}</p>
+                        <p>${this.t('help.avgLapCard')}</p>
+                        <p>${this.t('help.resultsReorder')}</p>
+                        <p>${this.t('help.homeSort')}</p>
+                        <p>${this.t('help.folderSort')}</p>
                     </section>
 
                     <section id="results" class="help-section">
@@ -2679,6 +2719,14 @@ const UI = {
                     <section id="calc" class="help-section">
                         <h3>${this.t('help.calcSectionTitle')}</h3>
                         <p>${this.t('help.calcText')}</p>
+                        <ul>
+                            <li>${this.t('help.calcQuantity')}</li>
+                            <li>${this.t('help.calcTime')}</li>
+                            <li>${this.t('help.calcPrice')}</li>
+                            <li>${this.t('help.calcWage')}</li>
+                        </ul>
+                        <p>${this.t('help.itemsPerRoundHelp')}</p>
+                        <p>${this.t('help.calcLongPress')}</p>
                     </section>
 
                     <section id="export-import" class="help-section">
@@ -2688,6 +2736,8 @@ const UI = {
                             <li>${this.t('help.shareZip')}</li>
                             <li>${this.t('help.importProject')}</li>
                         </ul>
+                        <p>${this.t('help.imageNote')}</p>
+                        <p>${this.t('help.exportSetupHelp')}</p>
                     </section>
 
                     <section id="settings" class="help-section">
@@ -2722,7 +2772,7 @@ const UI = {
                     <div style="text-align:right;margin-top:12px;">
                         <a href="#helpTop" class="btn btn-secondary" id="helpBackToTop">${this.t('help.backToTop')}</a>
                     </div>
-                </main>
+                </div>
             </div>`;
         const modal = this.createModal(this.t('help.title'), content);
         const toc = modal.querySelector('#helpToc');
@@ -2741,8 +2791,7 @@ const UI = {
         if (backTop && scroller) {
             backTop.addEventListener('click', (e) => {
                 e.preventDefault();
-                const topEl = modal.querySelector('#helpTop');
-                if (topEl) topEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                try { scroller.scrollTo({ top: 0, behavior: 'smooth' }); } catch(_) { scroller.scrollTop = 0; }
             });
         }
     },
