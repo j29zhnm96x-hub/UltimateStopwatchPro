@@ -490,6 +490,7 @@ main {
     background: var(--bg-secondary);
     border-radius: 12px;
     padding: 16px;
+    border: 2px solid var(--border);
     cursor: pointer;
     transition: all 0.2s;
     display: grid;
@@ -502,6 +503,7 @@ main {
 
 .result-item:active {
     transform: translateX(4px);
+    border-color: var(--accent);
 }
 
 .result-item.dragging {

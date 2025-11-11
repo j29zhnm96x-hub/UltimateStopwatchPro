@@ -160,6 +160,22 @@ const DataManager = {
             this.saveResults(results);
         }
     },
+    duplicateResult(resultId) {
+        const results = this.getResults();
+        const src = results.find(r => r.id === resultId);
+        if (!src) return null;
+        const copy = {
+            ...src,
+            id: Date.now().toString(),
+            name: (src.name || '') + ' (copy)',
+            createdAt: new Date().toISOString(),
+            position: Date.now(),
+            laps: Array.isArray(src.laps) ? src.laps.map(l => (typeof l === 'object' && l !== null ? { ...l } : l)) : []
+        };
+        results.push(copy);
+        this.saveResults(results);
+        return copy;
+    },
 
     setResultsOrder(folderId, orderedIds) {
         const results = this.getResults();
@@ -911,6 +927,9 @@ const Locales = {
         'save.attachImage': 'Attach Image (Optional)',
         'menu.chooseProjectColor': 'Choose Project Color',
         'menu.chooseProjectTextColor': 'Choose Project Text Color',
+        'menu.chooseResultColor': 'Choose Result Color',
+        'menu.chooseResultTextColor': 'Choose Result Text Color',
+        'menu.duplicate': 'Duplicate',
         'menu.rename': 'Rename',
         'menu.delete': 'Delete',
         'resultDetail.totalTime': 'Total Time',
@@ -1055,6 +1074,7 @@ const Locales = {
     'action.exportProject': 'Export Project',
     'action.importProject': 'Import Project',
     'action.shareProject': 'Share Project (ZIP)',
+    'action.randomizeResultColors': 'Randomize result colors',
     'success.projectImported': 'Project imported successfully!',
     'error.exportFailed': 'Export failed.',
     'error.importFailed': 'Import failed.',
@@ -1141,6 +1161,9 @@ const Locales = {
         'save.attachImage': 'Priloži sliku (neobavezno)',
         'menu.chooseProjectColor': 'Odaberi boju projekta',
         'menu.chooseProjectTextColor': 'Odaberi boju teksta projekta',
+        'menu.chooseResultColor': 'Odaberi boju rezultata',
+        'menu.chooseResultTextColor': 'Odaberi boju teksta rezultata',
+        'menu.duplicate': 'Dupliciraj',
         'menu.rename': 'Preimenuj',
         'menu.delete': 'Izbriši',
         'resultDetail.totalTime': 'Ukupno vrijeme',
@@ -1281,10 +1304,15 @@ const Locales = {
         'currency.euro': 'Euro (€)',
         'currency.usd': 'Američki dolar ($)',
     'currency.gbp': 'Funta (£)',
-    'action.exportProject': 'Izvezi projekt',
-    'action.importProject': 'Uvezi projekt',
-    'action.shareProject': 'Podijeli projekt (ZIP)',
-    'success.projectImported': 'Projekt uspješno uvezen!',
+    'action.exportProject': 'Izvoz projekta',
+    'action.importProject': 'Uvoz projekta',
+    'action.shareProject': 'Dijeli projekt (ZIP)',
+    'action.randomizeResultColors': 'Nasumično oboji kartice rezultata',
+    'action.duplicateResult': 'Dupliciraj rezultat',
+    'action.chooseResultColor': 'Odaberi boju rezultata',
+    'action.chooseResultTextColor': 'Odaberi boju teksta rezultata',
+    'action.settingsColors': 'Postavke boja',
+    'success.projectImported': 'Projekt je uspješno uvezen!',
     'error.exportFailed': 'Izvoz nije uspio.',
     'error.importFailed': 'Uvoz nije uspio.',
     'error.invalidProjectFile': 'Neispravna datoteka projekta.'
@@ -2391,7 +2419,7 @@ const UI = {
                 ` : `
                     <div class="results-list">
                         ${results.map(result => `
-                            <div class="result-item" data-result-id="${result.id}" draggable="true" style="background: ${folderColor}${textVars}; color: var(--text-primary);">
+                            <div class="result-item" data-result-id="${result.id}" draggable="true" style="background: ${result.color || folderColor}${(result.textColor ? `; --text-primary: ${result.textColor}; --text-secondary: ${this.adjustColor(result.textColor, -35)}` : textVars)}; color: var(--text-primary);">
                                 ${result.image ? `
                                     <img class="result-thumb" src="${result.image}" alt="thumb">
                                 ` : `
@@ -3585,6 +3613,12 @@ const UI = {
                         <option value="alpha" ${sortPref==='alpha' ? 'selected' : ''}>A–Z</option>
                     </select>
                 </div>
+                <div class="form-group">
+                    <label class="form-label">${this.t('settings.colors') || 'Colors'}</label>
+                    <div class="menu-list">
+                        <button class="menu-item" id="randomizeResultColorsBtn">${this.t('action.randomizeResultColors') || 'Randomize result colors'}</button>
+                    </div>
+                </div>
             `;
         } else if (view === 'result') {
             const curr = DataManager.getResults().find(r => r.id === AppState.currentResult);
@@ -3744,6 +3778,36 @@ const UI = {
                     localStorage.setItem('as_folderSort_' + folderId, sortSel.value);
                     this.renderFolderView(folderId);
                 }
+            });
+        }
+        const randBtn = modal.querySelector('#randomizeResultColorsBtn');
+        if (randBtn) {
+            randBtn.addEventListener('click', () => {
+                const folderId = AppState.currentFolder;
+                if (!folderId) return;
+                const palette = ['#3b82f6','#ef4444','#10b981','#f59e0b','#8b5cf6','#ec4899','#14b8a6','#f97316','#6366f1','#84cc16','#06b6d4','#a855f7'];
+                const pick = () => palette[Math.floor(Math.random()*palette.length)];
+                const luminance = (hex) => {
+                    try {
+                        let c = (hex||'').replace('#','');
+                        if (c.length===3) c = c.split('').map(ch=>ch+ch).join('');
+                        const r = parseInt(c.slice(0,2),16), g = parseInt(c.slice(2,4),16), b = parseInt(c.slice(4,6),16);
+                        return 0.299*r + 0.587*g + 0.114*b;
+                    } catch { return 255; }
+                };
+                const results = DataManager.getResults();
+                results.forEach(r => {
+                    if (r.folderId === folderId) {
+                        const bg = pick();
+                        const lum = luminance(bg);
+                        const txt = lum < 150 ? '#ffffff' : '#111827';
+                        r.color = bg;
+                        r.textColor = txt;
+                    }
+                });
+                DataManager.saveResults(results);
+                modal.remove();
+                this.renderFolderView(folderId);
             });
         }
         // Backup & Restore handlers (home view only)
@@ -4396,6 +4460,9 @@ const UI = {
         const menu = document.createElement('div');
         menu.className = 'menu-popover';
         menu.innerHTML = `
+            <button class="menu-item" data-action="duplicate" data-result-id="${resultId}">${this.t('menu.duplicate') || 'Duplicate'}</button>
+            <button class="menu-item" data-action="color" data-result-id="${resultId}">${this.t('menu.chooseResultColor') || 'Choose Result Color'}</button>
+            <button class="menu-item" data-action="text-color" data-result-id="${resultId}">${this.t('menu.chooseResultTextColor') || 'Choose Result Text Color'}</button>
             <button class="menu-item" data-action="rename" data-result-id="${resultId}">${this.t('menu.rename')}</button>
             <button class="menu-item" data-action="delete" data-result-id="${resultId}">${this.t('menu.delete')}</button>`;
         document.body.appendChild(menu);
@@ -4411,6 +4478,22 @@ const UI = {
             if (!item) return;
             const action = item.dataset.action;
             const rid = item.dataset.resultId;
+            if (action === 'duplicate' && rid) {
+                DataManager.duplicateResult(rid);
+                this.closeResultMenu();
+                this.renderFolderView(AppState.currentFolder);
+                return;
+            }
+            if (action === 'color' && rid) {
+                this.closeResultMenu();
+                this.showResultColorDialog(rid);
+                return;
+            }
+            if (action === 'text-color' && rid) {
+                this.closeResultMenu();
+                this.showResultTextColorDialog(rid);
+                return;
+            }
             if (action === 'rename' && rid) {
                 this.closeResultMenu();
                 this.showRenameResultDialog(rid);
@@ -4434,6 +4517,95 @@ const UI = {
             }
         };
         setTimeout(() => document.addEventListener('click', close, true), 0);
+    },
+    showResultColorDialog(resultId) {
+        const results = DataManager.getResults();
+        const result = results.find(r => r.id === resultId);
+        if (!result) return;
+        const presetColors = [
+            '#3b82f6', '#ef4444', '#10b981', '#f59e0b', 
+            '#8b5cf6', '#ec4899', '#14b8a6', '#f97316',
+            '#6366f1', '#84cc16', '#06b6d4', '#a855f7'
+        ];
+        const modal = this.createModal(this.t('menu.chooseResultColor') || 'Choose Result Color', `
+            <div class="form-group">
+                <label class="form-label">${this.t('color.preset')}</label>
+                <div class="color-palette-grid">
+                    ${presetColors.map(color => `
+                        <button class="color-palette-btn" data-color="${color}" style="background: ${color};"></button>
+                    `).join('')}
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="form-label">${this.t('color.custom')}</label>
+                <input type="color" class="color-picker" id="customResultColorPicker" value="${result.color || '#3b82f6'}">
+            </div>
+            <div class="modal-actions mt-3">
+                <button class="btn btn-secondary" id="cancelResultColorBtn">${this.t('action.cancel')}</button>
+                <button class="btn btn-primary" id="applyResultColorBtn">${this.t('action.apply')}</button>
+            </div>
+        `);
+        modal.querySelector('#cancelResultColorBtn').addEventListener('click', () => modal.remove());
+        let selectedColor = result.color || null;
+        modal.querySelectorAll('.color-palette-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                selectedColor = btn.dataset.color;
+                modal.querySelectorAll('.color-palette-btn').forEach(b => b.classList.remove('selected'));
+                btn.classList.add('selected');
+            });
+        });
+        modal.querySelector('#customResultColorPicker').addEventListener('change', (e) => {
+            selectedColor = e.target.value;
+        });
+        modal.querySelector('#applyResultColorBtn').addEventListener('click', () => {
+            DataManager.updateResult(resultId, { color: selectedColor });
+            modal.remove();
+            this.renderFolderView(AppState.currentFolder);
+        });
+    },
+    showResultTextColorDialog(resultId) {
+        const results = DataManager.getResults();
+        const result = results.find(r => r.id === resultId);
+        if (!result) return;
+        const presetColors = [
+            '#0f172a', '#111827', '#1f2937', '#334155', '#475569',
+            '#64748b', '#94a3b8', '#e5e7eb', '#f9fafb', '#ffffff'
+        ];
+        const modal = this.createModal(this.t('menu.chooseResultTextColor') || 'Choose Result Text Color', `
+            <div class="form-group">
+                <label class="form-label">${this.t('color.preset')}</label>
+                <div class="color-palette-grid">
+                    ${presetColors.map(color => `
+                        <button class="color-palette-btn" data-color="${color}" style="background: ${color}; border: 1px solid var(--border);"></button>
+                    `).join('')}
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="form-label">${this.t('color.custom')}</label>
+                <input type="color" class="color-picker" id="customResultTextColorPicker" value="${result.textColor || '#ffffff'}">
+            </div>
+            <div class="modal-actions mt-3">
+                <button class="btn btn-secondary" id="cancelResultTextColorBtn">${this.t('action.cancel')}</button>
+                <button class="btn btn-primary" id="applyResultTextColorBtn">${this.t('action.apply')}</button>
+            </div>
+        `);
+        modal.querySelector('#cancelResultTextColorBtn').addEventListener('click', () => modal.remove());
+        let selectedColor = result.textColor || null;
+        modal.querySelectorAll('.color-palette-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                selectedColor = btn.dataset.color;
+                modal.querySelectorAll('.color-palette-btn').forEach(b => b.classList.remove('selected'));
+                btn.classList.add('selected');
+            });
+        });
+        modal.querySelector('#customResultTextColorPicker').addEventListener('change', (e) => {
+            selectedColor = e.target.value;
+        });
+        modal.querySelector('#applyResultTextColorBtn').addEventListener('click', () => {
+            DataManager.updateResult(resultId, { textColor: selectedColor });
+            modal.remove();
+            this.renderFolderView(AppState.currentFolder);
+        });
     },
     showRenameResultDialog(resultId) {
         const result = DataManager.getResults().find(r => r.id === resultId);
