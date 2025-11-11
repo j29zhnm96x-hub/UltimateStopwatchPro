@@ -1963,21 +1963,24 @@ const UI = {
             // Stopwatch controls
             if (e.target.closest('#countdownBtn')) { this.showCountdownDialog(); return; }
             if (e.target.closest('#voiceToggle')) { this.toggleVoiceControl(); return; }
-            if (e.target.closest('#startBtn')) {
-                if (AppState.resultChoiceTargetId && !AppState.remeasureResultId && !AppState.continueResultId) {
-                    this.showReOrContinuePrompt();
-                    return;
-                }
-                if (AppState.countdownSeconds && !AppState.stopwatch.isRunning) {
-                    this.startCountdown(AppState.countdownSeconds); return;
-                }
-                Sound.play('start');
-                StopwatchManager.start(); this.renderStopwatch(); return; }
             if (e.target.closest('#pauseBtn')) { Sound.play('pause'); StopwatchManager.pause(); this.renderStopwatch(); return; }
             if (e.target.closest('#resumeBtn')) { Sound.play('resume'); StopwatchManager.resume(); this.renderStopwatch(); return; }
-            if (e.target.closest('#stopBtn')) { Sound.play('stop'); StopwatchManager.stop(); return; }
-            if (e.target.closest('#lapBtn')) { Sound.play('lap'); StopwatchManager.recordLap(); return; }
             if (e.target.closest('#resetBtn')) { Sound.play('reset'); StopwatchManager.reset(true); return; }
+        });
+
+        this.app.addEventListener('pointerdown', (e) => {
+            const btn = e.target.closest('#startBtn, #stopBtn, #lapBtn');
+            if (!btn) return;
+            if (btn.disabled) { e.preventDefault(); return; }
+            e.preventDefault();
+            if (btn.id === 'startBtn') {
+                if (AppState.resultChoiceTargetId && !AppState.remeasureResultId && !AppState.continueResultId) { this.showReOrContinuePrompt(); return; }
+                if (AppState.countdownSeconds && !AppState.stopwatch.isRunning) { this.startCountdown(AppState.countdownSeconds); return; }
+                Sound.play('start');
+                StopwatchManager.start(); this.renderStopwatch(); return;
+            }
+            if (btn.id === 'stopBtn') { Sound.play('stop'); StopwatchManager.stop(); return; }
+            if (btn.id === 'lapBtn') { Sound.play('lap'); StopwatchManager.recordLap(); return; }
         });
 
         // Drag & Drop (fallback) when SortableJS is not available
@@ -3209,8 +3212,29 @@ const UI = {
             mem.time = { h, m, s, estimatedQuantity: quantity };
         });
         
+        const clampTwoDecimals = (el) => {
+            if (!el) return;
+            const val = (el.value || '').replace(/[^0-9.]/g, '');
+            const parts = val.split('.');
+            if (parts.length === 1) { el.value = parts[0]; return; }
+            const int = parts.shift();
+            const frac = parts.join('');
+            el.value = int + '.' + frac.slice(0, 2);
+        };
+
+        const roundTwoDecimals = (el) => {
+            if (!el) return;
+            const num = parseFloat(el.value);
+            if (isNaN(num)) return;
+            el.value = num.toFixed(2);
+        };
+
         let lastPriceValue = null;
         const wageInput = modal.querySelector('#wageInput');
+        if (wageInput) {
+            wageInput.addEventListener('input', () => clampTwoDecimals(wageInput));
+            wageInput.addEventListener('blur', () => roundTwoDecimals(wageInput));
+        }
         modal.querySelector('#calcPriceBtn').addEventListener('click', () => {
             const wage = parseFloat(wageInput.value);
             if (wage) {
@@ -3225,6 +3249,10 @@ const UI = {
         
         let lastWageValue = null;
         const priceInput = modal.querySelector('#priceInput');
+        if (priceInput) {
+            priceInput.addEventListener('input', () => clampTwoDecimals(priceInput));
+            priceInput.addEventListener('blur', () => roundTwoDecimals(priceInput));
+        }
         const calcWageBtn = modal.querySelector('#calcWageBtn');
         if (calcWageBtn) {
             calcWageBtn.addEventListener('click', () => {
@@ -3335,7 +3363,7 @@ const UI = {
                 }
             }
             if (mem.price) {
-                if (typeof mem.price.wage === 'number') wageInput.value = String(mem.price.wage);
+                if (typeof mem.price.wage === 'number') wageInput.value = Number(mem.price.wage).toFixed(2);
                 if (typeof mem.price.pricePerPiece === 'number') {
                     lastPriceValue = mem.price.pricePerPiece;
                     modal.querySelector('#priceValue').textContent = AppState.currency + ' ' + lastPriceValue.toFixed(2);
@@ -3345,7 +3373,7 @@ const UI = {
             if (mem.wage) {
                 if (typeof mem.wage.pricePerPiece === 'number') {
                     const v = mem.wage.pricePerPiece;
-                    if (priceInput) priceInput.value = (typeof v === 'number') ? String(v.toFixed(2)).replace(/\.00$/, '') : String(v);
+                    if (priceInput) priceInput.value = (typeof v === 'number') ? String(Number(v).toFixed(2)).replace(/\.00$/, '') : String(v);
                 }
                 if (typeof mem.wage.hourlyWage === 'number') {
                     lastWageValue = mem.wage.hourlyWage;
